@@ -122,10 +122,60 @@ if st.button("🚀 報告を送信する", use_container_width=True, type="prima
             # 最下部に行を追加
             worksheet.append_row(row_data, value_input_option='USER_ENTERED')
             
-            # フィードバック用の計算
+            # --- 今日のフィードバック計算 ---
             total = am_k + pm_k + day_k + am_s + pm_s + day_s
             cap = FACILITY_CONFIG[facility]["sat"] if date.weekday() == 5 else FACILITY_CONFIG[facility]["week"]
             occ = (total / cap) * 100 if cap > 0 else 0
+            
+            # --- 今月の累計稼働率と売上予想の計算 ---
+            # 入力されたデータをこれまでのデータに結合（メモリ上でシミュレーション）
+            new_row_dict = {
+                '事業所名': facility, '営業日': date_str,
+                '【午前】要介護 利用人数': am_k, '【午前】支援・事業対象 利用人数': am_s,
+                '【午後】要介護 利用人数': pm_k, '【午後】支援・事業対象 利用人数': pm_s,
+                '【1日型】要介護 利用人数': day_k, '【1日型】支援・事業対象 利用人数': day_s
+            }
+            if not df_dates.empty:
+                df_all = df_dates.copy() # df_datesには全データが入っている前提に変更していますが、カラムが足りないため再取得
+                # ※処理速度を優先し、get_all_records の結果を丸ごと再利用できるようにしています
+                # ここでは簡易的に、今日のデータだけで月間を概算するのではなく、既存データと結合します
+            
+            # 再取得して正確に計算する
+            df_full = pd.DataFrame(worksheet.get_all_records())
+            df_fac = df_full[df_full['事業所名'] == facility].copy()
+            df_fac = pd.concat([df_fac, pd.DataFrame([new_row_dict])], ignore_index=True)
+            
+            # 当月に絞り込み
+            target_month = date.strftime('%Y/%m')
+            df_fac['営業日_dt'] = pd.to_datetime(df_fac['営業日'])
+            df_fac['年月'] = df_fac['営業日_dt'].dt.strftime('%Y/%m')
+            df_month = df_fac[df_fac['年月'] == target_month].copy()
+            
+            # 重複排除（同じ日の最新の報告を残す）
+            df_month = df_month.groupby('営業日').tail(1)
+            
+            # 合計人数の算出
+            cols = [c for c in df_month.columns if '人数' in c]
+            for c in cols:
+                df_month[c] = pd.to_numeric(df_month[c], errors='coerce').fillna(0)
+            df_month['合計'] = df_month[cols].sum(axis=1)
+            total_users_month = df_month['合計'].sum()
+            days_worked = len(df_month)
+            
+            # 累計定員の算出
+            cap_month = 0
+            for d_dt in df_month['営業日_dt']:
+                if d_dt.weekday() == 5:
+                    cap_month += FACILITY_CONFIG[facility]["sat"]
+                elif d_dt.weekday() != 6:
+                    cap_month += FACILITY_CONFIG[facility]["week"]
+                    
+            month_occ = (total_users_month / cap_month * 100) if cap_month > 0 else 0
+            
+            # 今月の営業日数を算出
+            import calendar
+            _, last_day = calendar.monthrange(date.year, date.month)
+            total_biz_days = sum(1 for d in range(1, last_day + 1) if datetime(date.year, date.month, d).weekday() != 6)
             
             st.balloons()
             st.success("✅ スプレッドシートへの保存が完了しました！")
@@ -134,9 +184,14 @@ if st.button("🚀 報告を送信する", use_container_width=True, type="prima
             <div class="metric-box">
                 <div class="sub-text">{date.strftime('%m月%d日')} の本日の稼働率</div>
                 <div class="big-number">{occ:.1f}%</div>
-                <div class="sub-text">利用者数: <b>{total}</b>人 / 定員: <b>{cap}</b>人</div>
+                <div class="sub-text" style="margin-bottom: 20px;">本日利用者: <b>{total}</b>人 / 定員: <b>{cap}</b>人</div>
+                
+                <div style="border-top: 2px dashed #22c55e; margin: 20px 0;"></div>
+                
+                <div class="sub-text">🏆 今月（{date.month}月）の現在までの累積稼働率</div>
+                <div style="font-size: 2.2rem; font-weight: bold; color: #16a34a; margin: 5px 0;">{month_occ:.1f}%</div>
             </div>
             """, unsafe_allow_html=True)
             
         except Exception as e:
-            st.error(f"エラーが発生しました。権限設定などが正しいか確認してください。詳細: {e}")
+            st.error(f"エラーが発生しました。詳細: {e}")
