@@ -199,7 +199,7 @@ with col1:
     fig1 = go.Figure(go.Scatter(x=['前半', '後半', '合計'], y=[avg_first, avg_second, kpi_p['avg_total']], mode='lines+markers', line=dict(color='#3b82f6', width=3), marker=dict(size=8)))
     # 土曜日が見切れないように r=30 に拡大
     fig1.update_layout(title='平均の推移', height=180, margin=dict(l=20,r=30,t=30,b=10), yaxis=dict(range=[15, max(avg_first, avg_second, kpi_p['avg_total'])+2]))
-    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig1, use_container_width=True, config={'staticPlot': True})
 with col2:
     weekday_order = {0:'月', 1:'火', 2:'水', 3:'木', 4:'金', 5:'土'}
     d['曜日名'] = d['曜日'].map(weekday_order)
@@ -211,7 +211,7 @@ with col2:
     fig2 = go.Figure(go.Bar(x=grp['曜日_cat'], y=grp['稼働率'], marker_color=['#22c55e', '#64748b', '#3b82f6', '#f97316', '#eab308', '#64748b'], text=[f"{v:.1f}%" for v in grp['稼働率']], textposition='auto'))
     # 土曜日が見切れないように r=30 に拡大
     fig2.update_layout(title='曜日別 平均稼働率 (%)', height=180, margin=dict(l=20,r=30,t=30,b=10), yaxis=dict(range=[0, 110]))
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True, config={'staticPlot': True})
 
 st.text_area("コメント (前月)", value="平日、土曜日に稼働率は8割を維持できているが、引き続き新規利用を順次進めている。", height=55, key="c1")
 
