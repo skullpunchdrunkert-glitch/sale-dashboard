@@ -51,11 +51,13 @@ st.markdown("<br>", unsafe_allow_html=True)
 if st.button("🚀 報告を送信する", use_container_width=True, type="primary"):
     with st.spinner("スプレッドシートに保存中..."):
         try:
-            # 認証とスプレッドシートの取得
-            credentials = Credentials.from_service_account_file(
-                'credentials.json', 
-                scopes=['https://www.googleapis.com/auth/spreadsheets']
-            )
+            # 認証とスプレッドシートの取得（本番・ローカル両対応）
+            scopes = ['https://www.googleapis.com/auth/spreadsheets']
+            if os.path.exists('credentials.json'):
+                credentials = Credentials.from_service_account_file('credentials.json', scopes=scopes)
+            else:
+                credentials = Credentials.from_service_account_info(dict(st.secrets["gcp_service_account"]), scopes=scopes)
+                
             client = gspread.authorize(credentials)
             # URLのIDとGIDからシートを特定
             sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'

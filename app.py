@@ -51,10 +51,12 @@ st.markdown("""
 
 @st.cache_data(ttl=300)
 def load_data():
-    credentials = Credentials.from_service_account_file(
-        'credentials.json', 
-        scopes=['https://www.googleapis.com/auth/spreadsheets.readonly']
-    )
+    scopes = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+    if os.path.exists('credentials.json'):
+        credentials = Credentials.from_service_account_file('credentials.json', scopes=scopes)
+    else:
+        credentials = Credentials.from_service_account_info(dict(st.secrets["gcp_service_account"]), scopes=scopes)
+        
     client = gspread.authorize(credentials)
     worksheet = client.open_by_key('1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4').get_worksheet_by_id(1338228675)
     records = worksheet.get_all_records()
