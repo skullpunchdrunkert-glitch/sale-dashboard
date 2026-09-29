@@ -1,0 +1,14 @@
+import streamlit as st
+
+st.set_page_config(page_title="リハビリ教室 システム", layout="centered")
+
+# 2つのアプリを1つにまとめるナビゲーション
+pages = {
+    "システムメニュー": [
+        st.Page("staff_app.py", title="現場日次報告ツール", icon="📱"),
+        st.Page("app.py", title="経営会議用ダッシュボード", icon="📊")
+    ]
+}
+
+pg = st.navigation(pages)
+pg.run()
