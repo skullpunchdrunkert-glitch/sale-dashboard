@@ -30,8 +30,58 @@ FACILITY_CONFIG = {
     "リハビリ教室サテライトクラス": {"week": 24, "sat": 24}
 }
 
+@st.cache_data(ttl=60)
+def get_reported_dates():
+    try:
+        scopes = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+        if os.path.exists('credentials.json'):
+            credentials = Credentials.from_service_account_file('credentials.json', scopes=scopes)
+        else:
+            credentials = Credentials.from_service_account_info(dict(st.secrets["gcp_service_account"]), scopes=scopes)
+        client = gspread.authorize(credentials)
+        worksheet = client.open_by_key('1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4').get_worksheet_by_id(1338228675)
+        df = pd.DataFrame(worksheet.get_all_records())
+        return df[['事業所名', '営業日']]
+    except Exception:
+        return pd.DataFrame(columns=['事業所名', '営業日'])
+
 facility = st.selectbox("🏢 事業所名", list(FACILITY_CONFIG.keys()))
-date = st.date_input("📅 営業日", datetime.today())
+
+# --- 未報告日付の自動計算 ---
+df_dates = get_reported_dates()
+if not df_dates.empty:
+    reported_str = df_dates[df_dates['事業所名'] == facility]['営業日'].tolist()
+    reported_dates = [pd.to_datetime(d).date() for d in reported_str if str(d).strip() != '']
+else:
+    reported_dates = []
+
+today = datetime.today().date()
+missing_dates = []
+
+# 過去30日間をチェック（日曜休み）
+for i in range(30):
+    d = today - pd.Timedelta(days=i)
+    if d.weekday() != 6:  # 日曜(6)以外
+        if d not in reported_dates:
+            missing_dates.append(d)
+
+# UI: 日付の選択
+options = missing_dates + ["📅 カレンダーから手動で選ぶ..."]
+
+def format_date_option(x):
+    if isinstance(x, str):
+        return x
+    elif x == today:
+        return f"{x.strftime('%Y/%m/%d')} (今日)"
+    else:
+        return f"{x.strftime('%Y/%m/%d')} (未報告)"
+
+selected_option = st.selectbox("📅 報告する日付", options, format_func=format_date_option)
+
+if isinstance(selected_option, str):
+    date = st.date_input("カレンダーから日付を選択", today)
+else:
+    date = selected_option
 
 st.markdown("### 👥 本日の利用人数")
 col1, col2 = st.columns(2)
