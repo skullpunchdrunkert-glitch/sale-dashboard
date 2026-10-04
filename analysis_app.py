@@ -187,6 +187,7 @@ try:
         
         forecast_sales = total_users_c * unit_price
         
+        total_days_c = days_week_c + days_sat_c
         curr_data_exists = True
         
         import calendar
