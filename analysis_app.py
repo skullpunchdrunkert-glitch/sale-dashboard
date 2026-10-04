@@ -290,6 +290,9 @@ try:
         _, last_day_c = calendar.monthrange(curr_month_dt.year, curr_month_dt.month)
         total_biz_days_c = sum(1 for d in range(1, last_day_c + 1) if datetime(curr_month_dt.year, curr_month_dt.month, d).weekday() <= 5)
         avg_total_c = total_users_c / (days_week_c + days_sat_c) if (days_week_c + days_sat_c) > 0 else 0
+        avg_week_c = users_week_c / days_week_c if days_week_c > 0 else 0
+        avg_sat_c = users_sat_c / days_sat_c if days_sat_c > 0 else 0
+
         projected_users_c = avg_total_c * total_biz_days_c
         projected_sales_c = projected_users_c * unit_price
         
@@ -314,7 +317,7 @@ st.markdown("""
 <style>
 @media print {
     body {
-        zoom: 0.8 !important; 
+        zoom: 0.72 !important; 
     }
     .stApp {
         width: 100% !important;
@@ -324,13 +327,16 @@ st.markdown("""
         flex: 1 1 0% !important;
         width: 50% !important;
     }
-    /* Hide all Streamlit buttons and no-print divs when printing */
     .stButton, .no-print, [data-testid="stSidebar"] {
         display: none !important;
     }
 }
 div.stMarkdown {
     font-size: 1.05rem;
+}
+div[data-baseweb="textarea"] textarea {
+    font-size: 1.25rem !important; /* Larger font for text areas */
+    line-height: 1.4 !important;
 }
 .report-title {
     font-size: 1.8rem !important;
@@ -341,10 +347,10 @@ div.stMarkdown {
     font-size: 1.25rem !important;
     font-weight: bold;
     background-color: #E2E8F0;
-    padding: 6px 10px;
+    padding: 4px 10px;
     border-left: 6px solid #3B82F6;
-    margin-top: 15px;
-    margin-bottom: 10px;
+    margin-top: 10px;
+    margin-bottom: 8px;
     color: #0F172A;
 }
 .kpi-main {
@@ -363,47 +369,47 @@ cap_week_80 = cap_week * 0.8
 cap_sat_80 = cap_sat * 0.8
 
 st.markdown(f"""
-<div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #3B82F6; padding-bottom: 10px; margin-bottom: 15px;">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #3B82F6; padding-bottom: 8px; margin-bottom: 12px;">
     <div>
         <div class="report-title" style="border: none; padding: 0; margin: 0;">{month_str} 管理者会議報告</div>
         <div style="font-size: 1.4rem; font-weight: bold; color: #334155; margin-top: 5px;">{facility}</div>
     </div>
     <div>
-        <table style="border-collapse: collapse; text-align: center; font-size: 0.95rem; font-weight: bold; color: #1E293B; margin-bottom: 5px;">
+        <table style="border-collapse: collapse; text-align: center; font-size: 0.95rem; font-weight: bold; color: #1E293B; margin-bottom: 3px;">
             <tr>
-                <td style="padding: 3px 12px; border: 1px solid #CBD5E1; background: #F1F5F9;">定員</td>
-                <td style="padding: 3px 12px; border: 1px solid #CBD5E1; background: #F1F5F9;">平日</td>
-                <td style="padding: 3px 12px; border: 1px solid #CBD5E1; background: #F1F5F9;">土曜</td>
+                <td style="padding: 2px 10px; border: 1px solid #CBD5E1; background: #F1F5F9;">定員</td>
+                <td style="padding: 2px 10px; border: 1px solid #CBD5E1; background: #F1F5F9;">平日</td>
+                <td style="padding: 2px 10px; border: 1px solid #CBD5E1; background: #F1F5F9;">土曜</td>
             </tr>
             <tr>
-                <td style="padding: 3px 12px; border: 1px solid #CBD5E1; background: #F8FAFC;">設定</td>
-                <td style="padding: 3px 12px; border: 1px solid #CBD5E1;">{cap_week}名</td>
-                <td style="padding: 3px 12px; border: 1px solid #CBD5E1;">{cap_sat}名</td>
+                <td style="padding: 2px 10px; border: 1px solid #CBD5E1; background: #F8FAFC;">設定</td>
+                <td style="padding: 2px 10px; border: 1px solid #CBD5E1;">{cap_week}名</td>
+                <td style="padding: 2px 10px; border: 1px solid #CBD5E1;">{cap_sat}名</td>
             </tr>
             <tr>
-                <td style="padding: 3px 12px; border: 1px solid #CBD5E1; background: #FEE2E2; color:#EF4444;">8割目標</td>
-                <td style="padding: 3px 12px; border: 1px solid #CBD5E1; color:#EF4444;">{cap_week_80:.1f}名</td>
-                <td style="padding: 3px 12px; border: 1px solid #CBD5E1; color:#EF4444;">{cap_sat_80:.1f}名</td>
+                <td style="padding: 2px 10px; border: 1px solid #CBD5E1; background: #FEE2E2; color:#EF4444;">8割目標</td>
+                <td style="padding: 2px 10px; border: 1px solid #CBD5E1; color:#EF4444;">{cap_week_80:.1f}名</td>
+                <td style="padding: 2px 10px; border: 1px solid #CBD5E1; color:#EF4444;">{cap_sat_80:.1f}名</td>
             </tr>
         </table>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown(f'<div class="section-title" style="margin-top: 5px;">1. 前月（確定）の営業報告 &nbsp;&nbsp;&nbsp; 営業日数 {total_days_p} 日</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="section-title" style="margin-top: 0px;">1. 前月（確定）の営業報告 &nbsp;&nbsp;&nbsp; 営業日数 {total_days_p} 日</div>', unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown(f"""<div style="margin-left:10px; line-height: 1.7; font-size: 1.05rem;">
+    st.markdown(f"""<div style="margin-left:10px; line-height: 1.6; font-size: 1.05rem;">
 <div>のべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_p:,.0f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {users_week_p:,.0f} 人 &nbsp;&nbsp; 土曜 {users_sat_p:,.0f} 人)</div>
 <div>1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_p:.2f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {avg_week_p:.2f} 人 &nbsp;&nbsp; 土曜 {avg_sat_p:.2f} 人)</div>
 <div>稼働率 &nbsp;&nbsp; (平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_p:.2f} %</span>)</div>
-<div style="margin-top: 5px; color:#475569;">要介護・要支援（事業対象含む）割合 &nbsp;&nbsp; <span style="font-weight:bold; color:#1E293B;">{ratio_str if 'ratio_str' in locals() else 'データなし'}</span></div>
-<div style="margin-top: 15px; padding-top: 12px; border-top: 2px dashed #CBD5E1;">
-<div style="font-size: 1.15rem; font-weight: bold; color: #0F172A; margin-bottom: 5px;">確定総売上 &nbsp;&nbsp; <span class="kpi-main kpi-sales">¥{confirmed_sales:,.0f}</span></div>
-<div style="margin-left: 10px; color: #475569; line-height: 1.4; font-size: 0.95rem;">・介護保険請求額: ¥{insurance_sales:,.0f}<br>・自費請求額: ¥{selfpay_sales:,.0f}</div>
-<div style="margin-top: 10px;">確定客単価 &nbsp;&nbsp; <span class="kpi-main">¥{unit_price:,.0f}</span></div>
+<div style="margin-top: 4px; color:#475569;">要介護・要支援（事業対象含む）割合 &nbsp;&nbsp; <span style="font-weight:bold; color:#1E293B;">{ratio_str if 'ratio_str' in locals() else 'データなし'}</span></div>
+<div style="margin-top: 10px; padding-top: 10px; border-top: 2px dashed #CBD5E1;">
+<div style="font-size: 1.15rem; font-weight: bold; color: #0F172A; margin-bottom: 4px;">確定総売上 &nbsp;&nbsp; <span class="kpi-main kpi-sales">¥{confirmed_sales:,.0f}</span></div>
+<div style="margin-left: 10px; color: #475569; line-height: 1.3; font-size: 0.95rem;">・介護保険請求額: ¥{insurance_sales:,.0f}<br>・自費請求額: ¥{selfpay_sales:,.0f}</div>
+<div style="margin-top: 8px;">確定客単価 &nbsp;&nbsp; <span class="kpi-main">¥{unit_price:,.0f}</span></div>
 </div></div>""", unsafe_allow_html=True)
 
     total_cap_p = cap_week_total_p + cap_sat_total_p
@@ -417,9 +423,9 @@ with col1:
     sign_80 = "" if diff_80 < 0 else "+"
     sign_85 = "" if diff_85 < 0 else "+"
     
-    st.markdown(f"""<div style="margin-top: 15px; padding: 12px; background-color: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;">
-<div style="font-weight: bold; margin-bottom: 5px; font-size: 1.05rem;">目標稼働率との売上差額（実績ベース）</div>
-<div style="font-size: 1rem; line-height: 1.5;">
+    st.markdown(f"""<div style="margin-top: 12px; padding: 10px; background-color: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;">
+<div style="font-weight: bold; margin-bottom: 3px; font-size: 1.05rem;">目標稼働率との売上差額（実績ベース）</div>
+<div style="font-size: 1rem; line-height: 1.4;">
 稼働率 80.0% の場合: <span style="color: {color_80}; font-weight:bold;">{sign_80}¥{diff_80:,.0f}</span> (目標 ¥{sales_80:,.0f})<br>
 稼働率 85.0% の場合: <span style="color: {color_85}; font-weight:bold;">{sign_85}¥{diff_85:,.0f}</span> (目標 ¥{sales_85:,.0f})
 </div></div>""", unsafe_allow_html=True)
@@ -433,7 +439,7 @@ with col2:
         target_80_y = [cap_sat * 0.8 if d.weekday() == 5 else cap_week * 0.8 for d in daily_prev['サービス日付']]
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
         
-        fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=15)), height=220, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
+        fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=14)), height=195, margin=dict(l=15,r=15,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
         st.plotly_chart(fig1, use_container_width=True, config={'staticPlot': True})
         
         wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
@@ -454,27 +460,28 @@ with col2:
                 marker_color='#10B981',
                 text=[f'{val:.1f}%' for val in wd_agg['occ']],
                 textposition='auto',
-                textfont=dict(size=14, color='white', weight='bold')
+                textfont=dict(size=13, color='white', weight='bold')
             )])
             fig2.add_hline(y=80, line_dash="dash", line_color="red", annotation_text="8割ライン", annotation_position="top right")
-            fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=15)), height=220, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, 110]))
+            fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=14)), height=195, margin=dict(l=15,r=15,t=25,b=10), yaxis=dict(range=[0, 110]))
             st.plotly_chart(fig2, use_container_width=True, config={'staticPlot': True})
 
 
 if curr_data_exists:
-    st.markdown(f'<div class="section-title">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日</div>', unsafe_allow_html=True)
-    st.markdown(f"""<div style="margin-left:10px; line-height: 1.6; font-size: 1.05rem;">
-<div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span></div>
-<div style="margin-top: 5px; display: flex; align-items: flex-end;">
+    st.markdown(f'<div class="section-title" style="margin-top: 5px;">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日</div>', unsafe_allow_html=True)
+    st.markdown(f"""<div style="margin-left:10px; line-height: 1.5; font-size: 1.05rem;">
+<div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_c:.2f}</span> 人 <span style="font-size:1rem;">(平日 {avg_week_c:.2f} 人 &nbsp; 土曜 {avg_sat_c:.2f} 人)</span></div>
+<div style="margin-top: 5px;">累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_c:.2f} %</span> &nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_c:.2f} %</span>)</span></div>
+<div style="margin-top: 8px; display: flex; align-items: flex-end;">
 <div>当月の売上着地予想 &nbsp;&nbsp; <span class="kpi-main kpi-sales">約 ¥{projected_sales_c:,.0f}</span></div>
-<div style="font-size: 0.9rem; color:#64748B; margin-bottom:4px; margin-left: 15px;">※前月の確定客単価 (¥{unit_price:,.0f}) × 当月の着地予想人数 ({projected_users_c:,.0f}人)</div>
+<div style="font-size: 0.9rem; color:#64748B; margin-bottom:3px; margin-left: 15px;">※前月の確定客単価 (¥{unit_price:,.0f}) × 当月の着地予想人数 ({projected_users_c:,.0f}人)</div>
 </div></div>""", unsafe_allow_html=True)
     
-st.markdown('<div style="font-weight:bold; font-size:1.05rem; color:#0F172A; border-bottom:2px solid #CBD5E1; margin-top:15px; margin-bottom:5px;">前月・今月の営業状況コメント</div>', unsafe_allow_html=True)
-comment_text = st.text_area("", placeholder="前月の総括や、今月の見込み・共有事項を入力してください...", height=80, label_visibility="collapsed", key="report_comment")
+st.markdown('<div style="font-weight:bold; font-size:1.05rem; color:#0F172A; border-bottom:2px solid #CBD5E1; margin-top:10px; margin-bottom:5px;">前月・今月の営業状況コメント</div>', unsafe_allow_html=True)
+comment_text = st.text_area("", placeholder="前月の総括や、今月の見込み・共有事項を入力してください...", height=68, label_visibility="collapsed", key="report_comment")
 
-st.markdown('<div class="section-title">3. 人事・車両・インシデントなどの報告</div>', unsafe_allow_html=True)
-incident_comment = st.text_area("", placeholder="人事異動、車両の状況、ヒヤリハット・インシデント等の共有事項を入力してください...", height=80, label_visibility="collapsed", key="incident_comment")
+st.markdown('<div class="section-title" style="margin-top: 10px;">3. 人事・車両・インシデントなどの報告</div>', unsafe_allow_html=True)
+incident_comment = st.text_area("", placeholder="人事異動、車両の状況、ヒヤリハット・インシデント等の共有事項を入力してください...", height=68, label_visibility="collapsed", key="incident_comment")
 
 # --- UI 2ページ目 ---
 st.markdown('<div style="page-break-before: always; height:0;"></div>', unsafe_allow_html=True)
@@ -494,20 +501,20 @@ if curr_data_exists and not daily_curr.empty:
 wd_str = ["月", "火", "水", "木", "金", "土", "日"]
 
 html_table = f"""
-<table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 1rem; margin-bottom: 20px;">
+<table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.95rem; margin-bottom: 15px;">
     <tr style="background-color: #F1F5F9; border: 1px solid #CBD5E1;">
-        <th colspan="4" style="padding: 5px; border: 1px solid #CBD5E1; font-size: 1.05rem;">【確定月】{mo_p}月</th>
-        <th colspan="4" style="padding: 5px; border: 1px solid #CBD5E1; background-color: #F0FDF4; font-size: 1.05rem;">【当月】{curr_month_dt.month if curr_data_exists else '-'}月</th>
+        <th colspan="4" style="padding: 4px; border: 1px solid #CBD5E1; font-size: 1rem;">【確定月】{mo_p}月</th>
+        <th colspan="4" style="padding: 4px; border: 1px solid #CBD5E1; background-color: #F0FDF4; font-size: 1rem;">【当月】{curr_month_dt.month if curr_data_exists else '-'}月</th>
     </tr>
     <tr style="background-color: #F8FAFC; border: 1px solid #CBD5E1;">
-        <th style="border: 1px solid #CBD5E1; width: 8%; padding: 4px;">日付</th>
-        <th style="border: 1px solid #CBD5E1; width: 7%; padding: 4px;">曜日</th>
-        <th style="border: 1px solid #CBD5E1; width: 10%; padding: 4px;">利用者数</th>
-        <th style="border: 1px solid #CBD5E1; width: 15%; padding: 4px;">稼働率</th>
-        <th style="border: 1px solid #CBD5E1; width: 8%; background-color: #F0FDF4; padding: 4px;">日付</th>
-        <th style="border: 1px solid #CBD5E1; width: 7%; background-color: #F0FDF4; padding: 4px;">曜日</th>
-        <th style="border: 1px solid #CBD5E1; width: 10%; background-color: #F0FDF4; padding: 4px;">利用者数</th>
-        <th style="border: 1px solid #CBD5E1; width: 15%; background-color: #F0FDF4; padding: 4px;">稼働率</th>
+        <th style="border: 1px solid #CBD5E1; width: 8%; padding: 2px;">日付</th>
+        <th style="border: 1px solid #CBD5E1; width: 7%; padding: 2px;">曜日</th>
+        <th style="border: 1px solid #CBD5E1; width: 10%; padding: 2px;">利用者数</th>
+        <th style="border: 1px solid #CBD5E1; width: 15%; padding: 2px;">稼働率</th>
+        <th style="border: 1px solid #CBD5E1; width: 8%; background-color: #F0FDF4; padding: 2px;">日付</th>
+        <th style="border: 1px solid #CBD5E1; width: 7%; background-color: #F0FDF4; padding: 2px;">曜日</th>
+        <th style="border: 1px solid #CBD5E1; width: 10%; background-color: #F0FDF4; padding: 2px;">利用者数</th>
+        <th style="border: 1px solid #CBD5E1; width: 15%; background-color: #F0FDF4; padding: 2px;">稼働率</th>
     </tr>
 """
 
@@ -576,7 +583,7 @@ for day in range(1, max_days + 1):
             pass
             
     if p_date_html != "" or c_date_html != "":
-        html_table += f"<tr><td style='border: 1px solid #CBD5E1; padding: 2px;'>{p_date_html}</td><td style='border: 1px solid #CBD5E1; padding: 2px;'>{p_wd_html}</td><td style='border: 1px solid #CBD5E1; padding: 2px;'>{p_users_html}</td><td style='border: 1px solid #CBD5E1; padding: 2px;'>{p_occ_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC; padding: 2px;'>{c_date_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC; padding: 2px;'>{c_wd_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC; padding: 2px;'>{c_users_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC; padding: 2px;'>{c_occ_html}</td></tr>"
+        html_table += f"<tr><td style='border: 1px solid #CBD5E1; padding: 1px;'>{p_date_html}</td><td style='border: 1px solid #CBD5E1; padding: 1px;'>{p_wd_html}</td><td style='border: 1px solid #CBD5E1; padding: 1px;'>{p_users_html}</td><td style='border: 1px solid #CBD5E1; padding: 1px;'>{p_occ_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC; padding: 1px;'>{c_date_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC; padding: 1px;'>{c_wd_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC; padding: 1px;'>{c_users_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC; padding: 1px;'>{c_occ_html}</td></tr>"
 
 html_table += "</table>"
 st.markdown(html_table, unsafe_allow_html=True)
@@ -584,7 +591,7 @@ st.markdown(html_table, unsafe_allow_html=True)
 
 # --- 曜日別稼働率の比較表 ---
 if curr_data_exists:
-    st.markdown('<div style="font-size:1.2rem; font-weight:bold; margin-top:20px; color:#1E293B; margin-bottom: 10px;">確定月と当月の「曜日別稼働率」比較表</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:1.15rem; font-weight:bold; margin-top:15px; color:#1E293B; margin-bottom: 8px;">確定月と当月の「曜日別稼働率」比較表</div>', unsafe_allow_html=True)
     
     wd_agg_c = None
     df_wd_c = daily_curr[daily_curr['曜日'] <= 5].copy()
@@ -602,44 +609,44 @@ if curr_data_exists:
     wd_dict_p = dict(zip(wd_agg['曜日'], wd_agg['occ'])) if 'wd_agg' in locals() and not wd_agg.empty else {}
     
     comp_html = """
-    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 1rem; margin-bottom: 20px;">
+    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.95rem; margin-bottom: 20px;">
         <tr style="background-color: #E2E8F0; border: 1px solid #CBD5E1;">
-            <th style="padding: 8px; border: 1px solid #CBD5E1;"></th>
-            <th style="padding: 8px; border: 1px solid #CBD5E1;">月曜日</th>
-            <th style="padding: 8px; border: 1px solid #CBD5E1;">火曜日</th>
-            <th style="padding: 8px; border: 1px solid #CBD5E1;">水曜日</th>
-            <th style="padding: 8px; border: 1px solid #CBD5E1;">木曜日</th>
-            <th style="padding: 8px; border: 1px solid #CBD5E1;">金曜日</th>
-            <th style="padding: 8px; border: 1px solid #CBD5E1;">土曜日</th>
+            <th style="padding: 6px; border: 1px solid #CBD5E1;"></th>
+            <th style="padding: 6px; border: 1px solid #CBD5E1;">月曜日</th>
+            <th style="padding: 6px; border: 1px solid #CBD5E1;">火曜日</th>
+            <th style="padding: 6px; border: 1px solid #CBD5E1;">水曜日</th>
+            <th style="padding: 6px; border: 1px solid #CBD5E1;">木曜日</th>
+            <th style="padding: 6px; border: 1px solid #CBD5E1;">金曜日</th>
+            <th style="padding: 6px; border: 1px solid #CBD5E1;">土曜日</th>
         </tr>
     """
     
-    comp_html += f"<tr><td style='border: 1px solid #CBD5E1; font-weight:bold; background-color: #F8FAFC; padding: 6px;'>【{mo_p}月実績】</td>"
+    comp_html += f"<tr><td style='border: 1px solid #CBD5E1; font-weight:bold; background-color: #F8FAFC; padding: 4px;'>【{mo_p}月実績】</td>"
     for w in range(6):
         occ = wd_dict_p.get(w, 0)
-        cls_str = ' style="border: 1px solid #CBD5E1; font-weight:bold; color: #EF4444; background-color: #FEE2E2; padding: 6px;"' if occ >= 80 else ' style="border: 1px solid #CBD5E1; padding: 6px;"'
+        cls_str = ' style="border: 1px solid #CBD5E1; font-weight:bold; color: #EF4444; background-color: #FEE2E2; padding: 4px;"' if occ >= 80 else ' style="border: 1px solid #CBD5E1; padding: 4px;"'
         comp_html += f"<td{cls_str}>{occ:.1f}%</td>"
     comp_html += "</tr>"
     
     cur_mo_str = curr_month_dt.month if curr_data_exists else '-'
-    comp_html += f"<tr><td style='border: 1px solid #CBD5E1; font-weight:bold; background-color: #F0FDF4; padding: 6px;'>【{cur_mo_str}月予測】</td>"
+    comp_html += f"<tr><td style='border: 1px solid #CBD5E1; font-weight:bold; background-color: #F0FDF4; padding: 4px;'>【{cur_mo_str}月予測】</td>"
     for w in range(6):
         occ = wd_dict_c.get(w, 0)
-        cls_str = ' style="border: 1px solid #CBD5E1; font-weight:bold; color: #EF4444; background-color: #FEE2E2; padding: 6px;"' if occ >= 80 else ' style="border: 1px solid #CBD5E1; padding: 6px;"'
+        cls_str = ' style="border: 1px solid #CBD5E1; font-weight:bold; color: #EF4444; background-color: #FEE2E2; padding: 4px;"' if occ >= 80 else ' style="border: 1px solid #CBD5E1; padding: 4px;"'
         comp_html += f"<td{cls_str}>{occ:.1f}%</td>"
     comp_html += "</tr></table>"
     
     st.markdown(comp_html, unsafe_allow_html=True)
 
 
-st.markdown('<div class="no-print" style="margin-top:40px;"></div>', unsafe_allow_html=True)
+st.markdown('<div class="no-print" style="margin-top:30px;"></div>', unsafe_allow_html=True)
 
 st.markdown("""
 <style>
 div.stButton > button {
     font-size: 1rem !important;
     font-weight: bold !important;
-    height: 48px !important;
+    height: 46px !important;
     border-radius: 8px !important;
     width: 100% !important;
 }
@@ -718,12 +725,12 @@ with col_btn2:
     import streamlit.components.v1 as components
     components.html("""
         <div class="no-print" style="text-align: center;">
-            <button style="width: 100%; height: 48px; background-color: #3B82F6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
+            <button style="width: 100%; height: 46px; background-color: #3B82F6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
             onclick="window.parent.print();">
                 🖨️ PDFに出力する（印刷）
             </button>
         </div>
-    """, height=60)
+    """, height=55)
 
 st.markdown("""
 <div class="no-print">
