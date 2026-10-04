@@ -46,9 +46,7 @@ with st.sidebar:
         "リハビリ教室新松戸": {"week": 84, "sat": 40},
         "リハビリ教室馬橋2号館": {"week": 50, "sat": 40},
         "ことばとからだのリハビリ教室": {"week": 27, "sat": 27},
-        "リハビリ教室サテライトクラス": {"week": 24, "sat": 24},
-        "とばとらんどの松戸": {"week": 24, "sat": 24},
-        "とばとらんどの新松戸": {"week": 24, "sat": 24}
+        "リハビリ教室サテライトクラス": {"week": 24, "sat": 24}
     }
     facility = st.selectbox("対象の事業所名", list(FACILITY_CONFIG.keys()), index=2)
     cap_week = st.number_input("平日定員 (人)", value=FACILITY_CONFIG[facility]["week"], step=1)
