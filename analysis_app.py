@@ -93,7 +93,13 @@ try:
         st.warning("売上台帳から該当事業所の売上データが取得できませんでした。0円として計算します。")
 
     # 2. スケジュール(前月)の解析
-    df_prev = pd.read_csv(io.StringIO(file_sched_prev.getvalue().decode('cp932', errors='replace')))
+        sched_p_lines = file_sched_prev.getvalue().decode('cp932', errors='replace').split('\\n')
+    header_idx_p = 0
+    for i, line in enumerate(sched_p_lines):
+        if "サービス日付" in line or "利用者氏名" in line:
+            header_idx_p = i
+            break
+    df_prev = pd.read_csv(io.StringIO('\\n'.join(sched_p_lines[header_idx_p:])))
     
     # --- 実績0（欠席など）のデータを除外 ---
     col_prev = 'サービス実績' if 'サービス実績' in df_prev.columns else (df_prev.columns[258] if len(df_prev.columns) > 258 else None)
