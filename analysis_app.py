@@ -293,7 +293,16 @@ st.markdown("""
 <style>
 @media print {
     /* Set page to A4 portrait and scale down to ensure everything fits */
+    
     @page { size: A4 portrait; margin: 5mm; }
+    
+    /* Force all containers to allow overflow so Plotly doesn't clip */
+    .stApp, .block-container, [data-testid="stAppViewBlockContainer"], 
+    [data-testid="stVerticalBlock"], [data-testid="column"], 
+    .element-container, .stPlotlyChart {
+        overflow: visible !important;
+    }
+    
     body { zoom: 0.68 !important; }
     
     .stApp, [data-testid="stAppViewBlockContainer"], .block-container {
@@ -308,7 +317,7 @@ st.markdown("""
     
     /* Scale Plotly charts so they never clip, and align them to the right */
     .stPlotlyChart {
-        transform: scale(0.70) !important;
+        
         transform-origin: top right !important;
         max-width: none !important;
     }
@@ -432,7 +441,8 @@ with col2:
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
         
         fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=16)), height=250, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
-        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
+        fig1.update_layout(width=420)
+        st.plotly_chart(fig1, use_container_width=False, config={'displayModeBar': False})
         
         wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
         df_wd = daily_prev[daily_prev['曜日'] <= 5].copy()
@@ -456,7 +466,8 @@ with col2:
             )])
             fig2.add_hline(y=80, line_dash="dash", line_color="red", annotation_text="8割ライン", annotation_position="top right")
             fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=16)), height=250, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, 110]))
-            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
+            fig2.update_layout(width=420)
+        st.plotly_chart(fig2, use_container_width=False, config={'displayModeBar': False})
 
 
 if curr_data_exists:
