@@ -212,34 +212,38 @@ except Exception as e:
 
 
 # --- UI 1ページ目 ---
-col_header1, col_header2 = st.columns([2, 1])
-with col_header1:
-    st.markdown(f'<div class="report-title">{month_str} 確定実績レポート &nbsp;&nbsp;&nbsp; {facility} &nbsp;&nbsp; <span style="font-size: 1rem; font-weight: normal; color: #475569;">設定定員: 平日 {cap_week}名 / 土祝 {cap_sat}名</span></div>', unsafe_allow_html=True)
-with col_header2:
-    st.write("") # Spacer
+
+# 1. 表題の事業所名横の設定定員を右端に、フォントを大きく、稼働率8割の人数も表記、平日と土曜
+cap_week_80 = cap_week * 0.8
+cap_sat_80 = cap_sat * 0.8
+
+st.markdown(f"""
+<div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #3B82F6; padding-bottom: 10px; margin-bottom: 20px;">
+    <div class="report-title" style="border: none; padding: 0; margin: 0;">{month_str} 確定実績レポート &nbsp;&nbsp;&nbsp; {facility}</div>
+    <div style="font-size: 1.1rem; font-weight: bold; color: #1E293B; text-align: right;">
+        <span style="color: #64748B; font-size: 0.9rem;">設定定員</span><br>
+        平日 {cap_week}名 <span style="font-size: 0.9rem; color: #EF4444;">(8割: {cap_week_80:.1f}名)</span> / 
+        土曜 {cap_sat}名 <span style="font-size: 0.9rem; color: #EF4444;">(8割: {cap_sat_80:.1f}名)</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown(f'<div class="section-title">1. 前月（確定）の営業報告 &nbsp;&nbsp;&nbsp; 営業日数 {total_days_p} 日</div>', unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown(f"""
-    <div style="margin-left:20px; line-height: 1.6; font-size: 0.95rem;">
-        <div>のべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_p:,.0f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {users_week_p:,.0f} 人 &nbsp;&nbsp; 土祝 {users_sat_p:,.0f} 人)</div>
-        <div>1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_p:.2f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {avg_week_p:.2f} 人 &nbsp;&nbsp; 土祝 {avg_sat_p:.2f} 人)</div>
-        <div>稼働率 &nbsp;&nbsp; (平日 <span style="text-decoration:underline;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土祝 <span style="text-decoration:underline;">{occ_sat_p:.2f} %</span>)</div>
-        
-        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #CBD5E1;">
-            <div style="font-size: 1.1rem; font-weight: bold; color: #0F172A; margin-bottom: 5px;">確定売上 &nbsp;&nbsp; <span class="kpi-main kpi-sales" style="font-size: 1.4rem;">¥{confirmed_sales:,.0f}</span></div>
-            <div style="margin-left: 10px; color: #475569;">
-                ・介護保険請求額: ¥{insurance_sales:,.0f}<br>
-                ・自費請求額: ¥{selfpay_sales:,.0f}
-            </div>
-            <div style="margin-top: 10px;">確定客単価 &nbsp;&nbsp; <span class="kpi-main">¥{unit_price:,.0f}</span></div>
-        </div>
-    """, unsafe_allow_html=True)
+    # 3. HTML blank line issue fixed by keeping it compact and removing empty lines
+    st.markdown(f"""<div style="margin-left:20px; line-height: 1.6; font-size: 0.95rem;">
+<div>のべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_p:,.0f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {users_week_p:,.0f} 人 &nbsp;&nbsp; 土曜 {users_sat_p:,.0f} 人)</div>
+<div>1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_p:.2f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {avg_week_p:.2f} 人 &nbsp;&nbsp; 土曜 {avg_sat_p:.2f} 人)</div>
+<div>稼働率 &nbsp;&nbsp; (平日 <span style="text-decoration:underline;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土曜 <span style="text-decoration:underline;">{occ_sat_p:.2f} %</span>)</div>
+<div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #CBD5E1;">
+<div style="font-size: 1.1rem; font-weight: bold; color: #0F172A; margin-bottom: 5px;">確定総売上 &nbsp;&nbsp; <span class="kpi-main kpi-sales" style="font-size: 1.4rem;">¥{confirmed_sales:,.0f}</span></div>
+<div style="margin-left: 10px; color: #475569;">・介護保険請求額: ¥{insurance_sales:,.0f}<br>・自費請求額: ¥{selfpay_sales:,.0f}</div>
+<div style="margin-top: 10px;">確定客単価 &nbsp;&nbsp; <span class="kpi-main">¥{unit_price:,.0f}</span></div>
+</div></div>""", unsafe_allow_html=True)
 
-    # 稼働率8割・8.5割との差額
     total_cap_p = cap_week_total_p + cap_sat_total_p
     sales_80 = total_cap_p * 0.8 * unit_price
     sales_85 = total_cap_p * 0.85 * unit_price
@@ -251,26 +255,27 @@ with col1:
     sign_80 = "" if diff_80 < 0 else "+"
     sign_85 = "" if diff_85 < 0 else "+"
     
-    st.markdown(f"""
-        <div style="margin-top: 15px; padding: 10px; background-color: #F8FAFC; border-radius: 5px;">
-            <div style="font-weight: bold; margin-bottom: 5px; font-size: 0.95rem;">目標稼働率との売上差額（実績ベース）</div>
-            <div style="font-size: 0.9rem;">
-                稼働率 80.0% の場合: <span style="color: {color_80};">{sign_80}¥{diff_80:,.0f}</span> (目標 ¥{sales_80:,.0f})<br>
-                稼働率 85.0% の場合: <span style="color: {color_85};">{sign_85}¥{diff_85:,.0f}</span> (目標 ¥{sales_85:,.0f})
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div style="margin-top: 15px; padding: 10px; background-color: #F8FAFC; border-radius: 5px;">
+<div style="font-weight: bold; margin-bottom: 5px; font-size: 0.95rem;">目標稼働率との売上差額（実績ベース）</div>
+<div style="font-size: 0.9rem;">
+稼働率 80.0% の場合: <span style="color: {color_80};">{sign_80}¥{diff_80:,.0f}</span> (目標 ¥{sales_80:,.0f})<br>
+稼働率 85.0% の場合: <span style="color: {color_85};">{sign_85}¥{diff_85:,.0f}</span> (目標 ¥{sales_85:,.0f})
+</div></div>""", unsafe_allow_html=True)
 
 with col2:
     import plotly.graph_objects as go
     if not daily_prev.empty:
         fig1 = go.Figure()
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=daily_prev['利用者数'], mode='lines+markers', line=dict(color='#2563EB', width=2), name='利用者数'))
-        fig1.update_layout(title='日別利用者数推移（確定月）', height=180, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]))
+        
+        # 4. 稼働率8割のラインを赤線で示す
+        target_80_y = [cap_sat * 0.8 if d.weekday() == 5 else cap_week * 0.8 for d in daily_prev['サービス日付']]
+        fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
+        
+        fig1.update_layout(title='日別利用者数推移（確定月）', height=200, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", ybottom=-0.2, yanchor="bottom", xanchor="right", x=1))
         st.plotly_chart(fig1, use_container_width=True, config={'staticPlot': True})
         
-        # 曜日別稼働率
+        # 5. 曜日別稼働率グラフのフォントと赤線
         wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
         df_wd = daily_prev[daily_prev['曜日'] <= 5].copy()
         if not df_wd.empty:
@@ -283,30 +288,99 @@ with col2:
             wd_agg['occ'] = (wd_agg['users'] / wd_agg['cap_total']) * 100
             wd_agg['wd_name'] = wd_agg['曜日'].map(wd_map)
             
-            fig2 = go.Figure(data=[go.Bar(x=wd_agg['wd_name'], y=wd_agg['occ'], marker_color='#10B981')])
-            fig2.update_layout(title='曜日別稼働率（%）', height=180, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, 110]))
+            # Add text inside bars
+            fig2 = go.Figure(data=[go.Bar(
+                x=wd_agg['wd_name'], 
+                y=wd_agg['occ'], 
+                marker_color='#10B981',
+                text=[f'{val:.1f}%' for val in wd_agg['occ']],
+                textposition='auto',
+                textfont=dict(size=14, color='white', weight='bold')
+            )])
+            fig2.add_hline(y=80, line_dash="dash", line_color="red", annotation_text="8割ライン", annotation_position="top right")
+            fig2.update_layout(title='曜日別稼働率（%）', height=200, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, 110]))
             st.plotly_chart(fig2, use_container_width=True, config={'staticPlot': True})
 
 
 if curr_data_exists:
     st.markdown(f'<div class="section-title" style="margin-top: 15px;">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日</div>', unsafe_allow_html=True)
-    st.markdown(f"""
-    <div style="margin-left:20px; line-height: 1.6; font-size: 0.95rem;">
-        <div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span></div>
-        <div style="margin-top: 5px; display: flex; align-items: flex-end;">
-            <div>当月の売上着地予想 &nbsp;&nbsp; <span class="kpi-main kpi-sales" style="color:#EF4444;">約 ¥{projected_sales_c:,.0f}</span></div>
-            <div style="font-size: 0.8rem; color:#64748B; margin-bottom:3px; margin-left: 10px;">※前月の確定客単価 (¥{unit_price:,.0f}) × 当月の着地予想人数 ({projected_users_c:,.0f}人) で算出</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div style="margin-left:20px; line-height: 1.6; font-size: 0.95rem;">
+<div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span></div>
+<div style="margin-top: 5px; display: flex; align-items: flex-end;">
+<div>当月の売上着地予想 &nbsp;&nbsp; <span class="kpi-main kpi-sales" style="color:#EF4444;">約 ¥{projected_sales_c:,.0f}</span></div>
+<div style="font-size: 0.8rem; color:#64748B; margin-bottom:3px; margin-left: 10px;">※前月の確定客単価 (¥{unit_price:,.0f}) × 当月の着地予想人数 ({projected_users_c:,.0f}人) で算出</div>
+</div></div>""", unsafe_allow_html=True)
     
-st.markdown('<div style="margin-top:20px; font-weight:bold; color:#0F172A; border-bottom:1px solid #CBD5E1; margin-bottom:10px;">分析・申し送りコメント</div>', unsafe_allow_html=True)
-st.text_area("", placeholder="こちらに会議用のコメントや共有事項を入力してください...", height=80, label_visibility="collapsed")
+# 6. 「分析・申し送りコメント」の表記を前月・今月の営業状況コメントに変更し、入力欄を4段程度に
+st.markdown('<div style="margin-top:20px; font-weight:bold; color:#0F172A; border-bottom:1px solid #CBD5E1; margin-bottom:10px;">前月・今月の営業状況コメント</div>', unsafe_allow_html=True)
+comment_text = st.text_area("", placeholder="前月の総括や、今月の見込み・共有事項を入力してください...", height=120, label_visibility="collapsed", key="report_comment")
+
+# 7 & 8. スプレッドシートへ送信
+st.markdown('<div style="margin-top:20px; font-weight:bold; color:#0F172A; border-bottom:1px solid #CBD5E1; margin-bottom:10px;">Googleスプレッドシートへの報告</div>', unsafe_allow_html=True)
+if st.button("データをスプレッドシートに送信する", type="primary"):
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+        import os
+        
+        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+        creds = None
+        if os.path.exists("credentials.json"):
+            creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
+        elif "gcp_service_account" in st.secrets:
+            creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+            
+        if creds:
+            client = gspread.authorize(creds)
+            sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
+            spreadsheet = client.open_by_key(sheet_id)
+            
+            ws_name = "管理者会議報告"
+            try:
+                ws = spreadsheet.worksheet(ws_name)
+            except gspread.exceptions.WorksheetNotFound:
+                ws = spreadsheet.add_worksheet(title=ws_name, rows="1000", cols="20")
+                headers = ['報告日時', '対象月', '事業所', '確定総売上', '前月総合稼働率', '前月平日稼働率', '前月土曜稼働率', '当月着地予測売上', '当月累積稼働率', '営業状況コメント']
+                ws.append_row(headers)
+            
+            records = ws.get_all_records()
+            row_to_update = None
+            for i, record in enumerate(records):
+                if str(record.get('対象月', '')) == str(month_str) and str(record.get('事業所', '')) == str(facility):
+                    row_to_update = i + 2
+                    break
+                    
+            from datetime import datetime as dt_now
+            now_str = dt_now.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            new_row = [
+                now_str,
+                month_str,
+                facility,
+                confirmed_sales,
+                f"{(occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0:.2f}%",
+                f"{occ_week_p:.2f}%",
+                f"{occ_sat_p:.2f}%",
+                projected_sales_c if curr_data_exists else 0,
+                f"{occ_c_total:.2f}%" if curr_data_exists else "0%",
+                comment_text
+            ]
+            
+            if row_to_update:
+                ws.update(f"A{row_to_update}:J{row_to_update}", [new_row])
+                st.success(f"スプレッドシート（{ws_name}タブ）の {month_str}・{facility} のデータを上書き更新しました！")
+            else:
+                ws.append_row(new_row)
+                st.success(f"スプレッドシート（{ws_name}タブ）へ {month_str}・{facility} のデータを新規送信しました！")
+        else:
+            st.error("認証情報(credentials.json)が見つかりません。")
+    except Exception as e:
+        st.error(f"スプレッドシート送信エラー: {e}")
+
 
 # --- UI 2ページ目 ---
 st.markdown('<div style="page-break-before: always; height:0;"></div>', unsafe_allow_html=True)
 
-# 確定月と当月の日々実績データの左右対比
 st.markdown(f'<div class="page2-title">{facility} 日々実績データ（確定月・当月比較）</div>', unsafe_allow_html=True)
 
 df_dict_p = {}
@@ -340,7 +414,7 @@ html_table = f"""
 """
 
 import calendar
-import datetime
+from datetime import date
 _, last_day_p = calendar.monthrange(yr_p, mo_p)
 if curr_data_exists:
     _, last_day_c = calendar.monthrange(curr_month_dt.year, curr_month_dt.month)
@@ -351,57 +425,58 @@ max_days = max(last_day_p, last_day_c)
 
 row_count = 0
 for day in range(1, max_days + 1):
-    # 確定月
     p_date_html = ""
     p_wd_html = ""
     p_users_html = ""
     p_occ_html = ""
     
     if day <= last_day_p:
-        dt_p = datetime.date(yr_p, mo_p, day)
-        w_p = dt_p.weekday()
-        if w_p != 6: # exclude Sunday
-            cap = cap_sat if w_p == 5 else cap_week
-            users = df_dict_p.get(day, "")
-            occ_str = ""
-            cls_str = ""
-            if users != "":
-                occ = (users / cap) * 100
-                occ_str = f"{occ:.2f}%"
-                if occ >= target_rate:
-                    cls_str = ' style="font-weight:bold; color:#10B981;"'
-            p_date_html = f"{mo_p}/{day}"
-            p_wd_html = wd_str[w_p]
-            p_users_html = str(users)
-            p_occ_html = f"<span{cls_str}>{occ_str}</span>"
-            row_count += 1
+        try:
+            dt_p = date(yr_p, mo_p, day)
+            w_p = dt_p.weekday()
+            if w_p != 6: # exclude Sunday
+                cap = cap_sat if w_p == 5 else cap_week
+                users = df_dict_p.get(day, "")
+                occ_str = ""
+                cls_str = ""
+                if users != "":
+                    occ = (users / cap) * 100
+                    occ_str = f"{occ:.2f}%"
+                    if occ >= target_rate:
+                        cls_str = ' style="font-weight:bold; color:#10B981;"'
+                p_date_html = f"{mo_p}/{day}"
+                p_wd_html = wd_str[w_p]
+                p_users_html = str(users)
+                p_occ_html = f"<span{cls_str}>{occ_str}</span>"
+        except ValueError:
+            pass
             
-    # 当月
     c_date_html = ""
     c_wd_html = ""
     c_users_html = ""
     c_occ_html = ""
     
     if curr_data_exists and day <= last_day_c:
-        dt_c = datetime.date(curr_month_dt.year, curr_month_dt.month, day)
-        w_c = dt_c.weekday()
-        if w_c != 6:
-            cap = cap_sat if w_c == 5 else cap_week
-            users = df_dict_c.get(day, "")
-            occ_str = ""
-            cls_str = ""
-            if users != "":
-                occ = (users / cap) * 100
-                occ_str = f"{occ:.2f}%"
-                if occ >= target_rate:
-                    cls_str = ' style="font-weight:bold; color:#10B981;"'
-            c_date_html = f"{curr_month_dt.month}/{day}"
-            c_wd_html = wd_str[w_c]
-            c_users_html = str(users)
-            c_occ_html = f"<span{cls_str}>{occ_str}</span>"
-            row_count = max(row_count, day) # Just to ensure we count rows
+        try:
+            dt_c = date(curr_month_dt.year, curr_month_dt.month, day)
+            w_c = dt_c.weekday()
+            if w_c != 6:
+                cap = cap_sat if w_c == 5 else cap_week
+                users = df_dict_c.get(day, "")
+                occ_str = ""
+                cls_str = ""
+                if users != "":
+                    occ = (users / cap) * 100
+                    occ_str = f"{occ:.2f}%"
+                    if occ >= target_rate:
+                        cls_str = ' style="font-weight:bold; color:#10B981;"'
+                c_date_html = f"{curr_month_dt.month}/{day}"
+                c_wd_html = wd_str[w_c]
+                c_users_html = str(users)
+                c_occ_html = f"<span{cls_str}>{occ_str}</span>"
+        except ValueError:
+            pass
             
-    # Print row if at least one side is not Sunday
     if p_date_html != "" or c_date_html != "":
         html_table += f"<tr><td style='border: 1px solid #CBD5E1;'>{p_date_html}</td><td style='border: 1px solid #CBD5E1;'>{p_wd_html}</td><td style='border: 1px solid #CBD5E1;'>{p_users_html}</td><td style='border: 1px solid #CBD5E1;'>{p_occ_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC;'>{c_date_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC;'>{c_wd_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC;'>{c_users_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC;'>{c_occ_html}</td></tr>"
 
@@ -413,7 +488,6 @@ st.markdown(html_table, unsafe_allow_html=True)
 if curr_data_exists:
     st.markdown('<div style="font-size:1.1rem; font-weight:bold; margin-top:20px; color:#1E293B;">確定月と当月の「曜日別稼働率」比較表</div>', unsafe_allow_html=True)
     
-    # Calculate for current month
     wd_agg_c = None
     df_wd_c = daily_curr[daily_curr['曜日'] <= 5].copy()
     if not df_wd_c.empty:
