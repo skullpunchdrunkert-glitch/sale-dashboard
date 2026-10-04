@@ -292,28 +292,30 @@ except Exception as e:
 st.markdown("""
 <style>
 @media print {
-    /* Force page to A4 portrait and remove margins so we control it */
-    @page { size: A4 portrait; margin: 5mm; }
-    
-    /* Fix Plotly clipping: scale the charts inside the columns */
-    .stPlotlyChart {
-        transform: scale(0.75);
-        transform-origin: top left;
-        max-width: 130% !important; /* Allow it to overflow its container before scaling */
-    }
-    
     body {
-        zoom: 0.65 !important; 
+        zoom: 0.68 !important; 
     }
     .stApp {
         width: 100% !important;
         max-width: 100% !important;
     }
+    .block-container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
     [data-testid="column"] {
         flex: 1 1 0% !important;
         width: 50% !important;
     }
-    .stButton, .no-print, [data-testid="stSidebar"] {
+    /* Hide the buttons and notes at the bottom */
+    [data-testid="stVerticalBlock"] > div:nth-last-child(1),
+    [data-testid="stVerticalBlock"] > div:nth-last-child(2),
+    [data-testid="stVerticalBlock"] > div:nth-last-child(3),
+    [data-testid="stVerticalBlock"] > div:nth-last-child(4) {
+        display: none !important;
+    }
+    [data-testid="stSidebar"] {
         display: none !important;
     }
 }
@@ -425,8 +427,8 @@ with col2:
         target_80_y = [cap_sat * 0.8 if d.weekday() == 5 else cap_week * 0.8 for d in daily_prev['サービス日付']]
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
         
-        fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=16)), height=240, margin=dict(l=15,r=15,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
-        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False, 'responsive': True})
+        fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=16)), width=380, height=250, margin=dict(l=15,r=15,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
+        st.plotly_chart(fig1, use_container_width=False, config={'displayModeBar': False})
         
         wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
         df_wd = daily_prev[daily_prev['曜日'] <= 5].copy()
@@ -449,8 +451,8 @@ with col2:
                 textfont=dict(size=15, color='white', weight='bold')
             )])
             fig2.add_hline(y=80, line_dash="dash", line_color="red", annotation_text="8割ライン", annotation_position="top right")
-            fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=16)), height=240, margin=dict(l=15,r=15,t=25,b=10), yaxis=dict(range=[0, 110]))
-            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False, 'responsive': True})
+            fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=16)), width=380, height=250, margin=dict(l=15,r=15,t=25,b=10), yaxis=dict(range=[0, 110]))
+            st.plotly_chart(fig2, use_container_width=False, config={'displayModeBar': False})
 
 
 if curr_data_exists:
@@ -464,15 +466,18 @@ if curr_data_exists:
 </div></div>""", unsafe_allow_html=True)
     
 st.markdown('<div style="font-weight:bold; font-size:1.15rem; color:#0F172A; border-bottom:2px solid #CBD5E1; margin-top:20px; margin-bottom:8px;">前月・今月の営業状況コメント</div>', unsafe_allow_html=True)
-comment_text = st.text_area("", placeholder="前月の総括や、今月の見込み・共有事項を入力してください...", height=140, label_visibility="collapsed", key="report_comment")
+comment_text = st.text_area("", placeholder="前月の総括や、今月の見込み・共有事項を入力してください...", height=180, label_visibility="collapsed", key="report_comment")
 
 st.markdown('<div class="section-title" style="margin-top: 20px;">3. 人事・車両・インシデントなどの報告</div>', unsafe_allow_html=True)
-incident_comment = st.text_area("", placeholder="人事異動、車両の状況、ヒヤリハット・インシデント等の共有事項を入力してください...", height=140, label_visibility="collapsed", key="incident_comment")
+incident_comment = st.text_area("", placeholder="人事異動、車両の状況、ヒヤリハット・インシデント等の共有事項を入力してください...", height=180, label_visibility="collapsed", key="incident_comment")
+
+st.markdown('<div style="font-weight:bold; font-size:1.3rem; margin-top:25px; margin-bottom:10px;">次回会議日程　　　　月　　　日　（　　　）　　～　</div>', unsafe_allow_html=True)
 
 # --- UI 2ページ目 ---
 st.markdown('<div style="page-break-before: always; height:0;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="margin-top: 30px;"></div>', unsafe_allow_html=True)
 
-st.markdown(f'<div class="page2-title" style="font-size: 1.5rem; font-weight: bold; border-bottom: 2px solid #3B82F6; margin-bottom: 12px; margin-top: 20px;">{facility} 日々実績データ（確定月・当月比較）</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="page2-title" style="font-size: 1.5rem; font-weight: bold; border-bottom: 2px solid #3B82F6; margin-bottom: 12px;">{facility} 日々実績データ（確定月・当月比較）</div>', unsafe_allow_html=True)
 
 df_dict_p = {}
 if not daily_prev.empty:
