@@ -189,7 +189,8 @@ st.markdown(f"""
     <div>確定稼働率 &nbsp;&nbsp; (平日 <span style="text-decoration:underline;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土曜 <span style="text-decoration:underline;">{occ_sat_p:.2f} %</span>)</div>
     <div style="margin-top: 5px; display: flex; align-items: flex-end; flex-wrap: wrap; gap: 15px;">
         <div>確定総売上 &nbsp;&nbsp; <span class="sales-highlight">¥{confirmed_sales:,.0f}</span></div>
-        <div>確定客単価 &nbsp;&nbsp; <span class="sales-highlight">¥{unit_price:,.0f}</span></div>
+        <div style="font-size: 0.95rem; color: #475569; padding-bottom: 3px;">(介護保険: ¥{insurance_sales:,.0f} / 自費: ¥{selfpay_sales:,.0f})</div>
+            <div>確定客単価 &nbsp;&nbsp; <span class="sales-highlight">¥{unit_price:,.0f}</span></div>
         <div style="font-size: 0.9rem; color: #334155; padding-bottom: 3px; border-left: 2px solid #cbd5e1; padding-left: 15px;">
             稼働80%目安: ¥{sales_80_p:,.0f} (<span style="color:{color_80_p}; font-weight:bold;">{sign_80_p}{diff_80_p:,.0f}円</span>) &nbsp;|&nbsp; 稼働85%目安: ¥{sales_85_p:,.0f}
         </div>
