@@ -265,6 +265,8 @@ try:
         import calendar
         _, last_day_c = calendar.monthrange(curr_month_dt.year, curr_month_dt.month)
         total_biz_days_c = sum(1 for d in range(1, last_day_c + 1) if datetime(curr_month_dt.year, curr_month_dt.month, d).weekday() <= 5)
+        total_biz_week_c = sum(1 for d in range(1, last_day_c + 1) if datetime(curr_month_dt.year, curr_month_dt.month, d).weekday() <= 4)
+        total_biz_sat_c = sum(1 for d in range(1, last_day_c + 1) if datetime(curr_month_dt.year, curr_month_dt.month, d).weekday() == 5)
         avg_total_c = total_users_c / (days_week_c + days_sat_c) if (days_week_c + days_sat_c) > 0 else 0
         avg_week_c = users_week_c / days_week_c if days_week_c > 0 else 0
         avg_sat_c = users_sat_c / days_sat_c if days_sat_c > 0 else 0
@@ -473,7 +475,7 @@ with col2:
 
 
 if curr_data_exists:
-    st.markdown(f'<div class="section-title" style="margin-top: 10px;">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-title" style="margin-top: 10px; font-size: 1.25rem !important;">2. 当月（会議当月）の営業経過・着地予想 <span style="font-size: 1.05rem; font-weight: normal; margin-left: 15px;">当月営業 {total_biz_days_c}日 (平日 {total_biz_week_c}日 土曜 {total_biz_sat_c}日) &nbsp;/&nbsp; 経過 {total_days_c}日 (平日 {days_week_c}日 土曜 {days_sat_c}日)</span></div>', unsafe_allow_html=True)
     st.markdown(f"""<div style="margin-left:10px; line-height: 1.6; font-size: 1.15rem;">
 <div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_c:.2f}</span> 人 <span style="font-size:1.05rem;">(平日 {avg_week_c:.2f} 人 &nbsp; 土曜 {avg_sat_c:.2f} 人)</span></div>
 <div style="margin-top: 6px;">累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1.05rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_c:.2f} %</span> &nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_c:.2f} %</span>)</span></div>
