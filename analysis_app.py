@@ -308,11 +308,18 @@ st.markdown("""
         flex: 1 1 0% !important;
         width: 50% !important;
     }
-    /* Hide the buttons and notes at the bottom */
-    [data-testid="stVerticalBlock"] > div:nth-last-child(1),
-    [data-testid="stVerticalBlock"] > div:nth-last-child(2),
-    [data-testid="stVerticalBlock"] > div:nth-last-child(3),
-    [data-testid="stVerticalBlock"] > div:nth-last-child(4) {
+    
+    
+    /* Hide the save button */
+    .stButton {
+        display: none !important;
+    }
+    /* Hide the PDF button iframe (which has height 70) */
+    iframe[height="70"], iframe[height="54"] {
+        display: none !important;
+    }
+    /* Hide the iframe's wrapper container if possible */
+    .element-container:has(iframe[height="70"]) {
         display: none !important;
     }
     [data-testid="stSidebar"] {
