@@ -272,7 +272,7 @@ with col2:
         target_80_y = [cap_sat * 0.8 if d.weekday() == 5 else cap_week * 0.8 for d in daily_prev['サービス日付']]
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
         
-        fig1.update_layout(title='日別利用者数推移（確定月）', height=200, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", ybottom=-0.2, yanchor="bottom", xanchor="right", x=1))
+        fig1.update_layout(title='日別利用者数推移（確定月）', height=200, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
         st.plotly_chart(fig1, use_container_width=True, config={'staticPlot': True})
         
         # 5. 曜日別稼働率グラフのフォントと赤線
