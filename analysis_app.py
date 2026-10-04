@@ -191,9 +191,8 @@ try:
         curr_data_exists = True
         
         import calendar
-        import datetime
         _, last_day_c = calendar.monthrange(curr_month_dt.year, curr_month_dt.month)
-        total_biz_days_c = sum(1 for d in range(1, last_day_c + 1) if datetime.date(curr_month_dt.year, curr_month_dt.month, d).weekday() <= 5)
+        total_biz_days_c = sum(1 for d in range(1, last_day_c + 1) if datetime(curr_month_dt.year, curr_month_dt.month, d).weekday() <= 5)
         avg_total_c = total_users_c / (days_week_c + days_sat_c) if (days_week_c + days_sat_c) > 0 else 0
         projected_users_c = avg_total_c * total_biz_days_c
         projected_sales_c = projected_users_c * unit_price
