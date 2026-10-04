@@ -83,9 +83,9 @@ if file_sales and file_sched_prev:
             if col in df_sales.columns:
                 df_sales[col] = pd.to_numeric(df_sales[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
                 
-        df_fac_sales = df_sales[(df_sales['事業所名'] == facility) & (df_sales['サービス種類'] == '利用者請求額合計')]
+        df_fac_sales = df_sales[(df_sales['事業所名'].astype(str).str.contains(facility, na=False)) & (df_sales['サービス種類'] == '利用者合計')]
         if df_fac_sales.empty:
-            df_fac_sales = df_sales[df_sales['サービス種類'] == '利用者請求額合計']
+            df_fac_sales = df_sales[df_sales['サービス種類'] == '利用者合計']
             
         ins_cols = ['国保連請求額', '公費請求額', '利用者負担額', '公費利用者負担額']
         self_cols = ['限度額超過額', '教材費', '昼食・おやつ・飲み物代']
