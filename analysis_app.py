@@ -292,40 +292,36 @@ except Exception as e:
 st.markdown("""
 <style>
 @media print {
-    body {
-        zoom: 0.68 !important; 
-    }
-    .stApp {
-        width: 100% !important;
+    /* Set page to A4 portrait and scale down to ensure everything fits */
+    @page { size: A4 portrait; margin: 5mm; }
+    body { zoom: 0.68 !important; }
+    
+    .stApp, [data-testid="stAppViewBlockContainer"], .block-container {
         max-width: 100% !important;
-    }
-    .block-container {
-        max-width: 100% !important;
-        padding: 0 !important;
         width: 100% !important;
+        padding: 10px !important;
     }
+    
     [data-testid="column"] {
         flex: 1 1 0% !important;
-        width: 50% !important;
     }
     
+    /* Scale Plotly charts so they never clip, and align them to the right */
+    .stPlotlyChart {
+        transform: scale(0.70) !important;
+        transform-origin: top right !important;
+        max-width: none !important;
+    }
+
+    /* Hide sidebar, buttons, and specific iframes (PDF button) */
+    [data-testid="stSidebar"], .stButton, .no-print, iframe {
+        display: none !important;
+    }
     
-    /* Hide the save button */
-    .stButton {
-        display: none !important;
-    }
-    /* Hide the PDF button iframe (which has height 70) */
-    iframe[height="70"], iframe[height="54"] {
-        display: none !important;
-    }
-    /* Hide the iframe's wrapper container if possible */
-    .element-container:has(iframe[height="70"]) {
-        display: none !important;
-    }
-    [data-testid="stSidebar"] {
-        display: none !important;
-    }
+    /* Hide the parent containers of the iframe if possible */
+    .element-container:has(iframe) { display: none !important; }
 }
+
 div.stMarkdown {
     font-size: 1.15rem;
 }
@@ -393,7 +389,8 @@ st.markdown(f"""
 
 st.markdown(f'<div class="section-title" style="margin-top: 0px;">1. 前月（確定）の営業報告 &nbsp;&nbsp;&nbsp; 営業日数 {total_days_p} 日</div>', unsafe_allow_html=True)
 
-col1, col2 = st.columns(2)
+# 60% : 40% (Make left wider to avoid wrap, right narrower to push right)
+col1, col2 = st.columns([1.3, 1.0])
 
 with col1:
     st.markdown(f"""<div style="margin-left:10px; line-height: 1.7; font-size: 1.15rem;">
@@ -434,8 +431,8 @@ with col2:
         target_80_y = [cap_sat * 0.8 if d.weekday() == 5 else cap_week * 0.8 for d in daily_prev['サービス日付']]
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
         
-        fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=16)), width=380, height=250, margin=dict(l=15,r=15,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
-        st.plotly_chart(fig1, use_container_width=False, config={'displayModeBar': False})
+        fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=16)), height=250, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
+        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
         
         wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
         df_wd = daily_prev[daily_prev['曜日'] <= 5].copy()
@@ -458,8 +455,8 @@ with col2:
                 textfont=dict(size=15, color='white', weight='bold')
             )])
             fig2.add_hline(y=80, line_dash="dash", line_color="red", annotation_text="8割ライン", annotation_position="top right")
-            fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=16)), width=380, height=250, margin=dict(l=15,r=15,t=25,b=10), yaxis=dict(range=[0, 110]))
-            st.plotly_chart(fig2, use_container_width=False, config={'displayModeBar': False})
+            fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=16)), height=250, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, 110]))
+            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
 
 
 if curr_data_exists:
@@ -472,17 +469,19 @@ if curr_data_exists:
 <div style="font-size: 0.95rem; color:#64748B; margin-bottom:3px; margin-left: 15px;">※前月の確定客単価 (¥{unit_price:,.0f}) × 当月の着地予想人数 ({projected_users_c:,.0f}人)</div>
 </div></div>""", unsafe_allow_html=True)
     
-st.markdown('<div style="font-weight:bold; font-size:1.15rem; color:#0F172A; border-bottom:2px solid #CBD5E1; margin-top:20px; margin-bottom:8px;">前月・今月の営業状況コメント</div>', unsafe_allow_html=True)
-comment_text = st.text_area("", placeholder="前月の総括や、今月の見込み・共有事項を入力してください...", height=180, label_visibility="collapsed", key="report_comment")
+st.markdown('<div style="font-weight:bold; font-size:1.15rem; color:#0F172A; border-bottom:2px solid #CBD5E1; margin-top:15px; margin-bottom:5px;">前月・今月の営業状況コメント</div>', unsafe_allow_html=True)
+# Reduced height to prevent Page 1 overflow
+comment_text = st.text_area("", placeholder="前月の総括や、今月の見込み・共有事項を入力してください...", height=120, label_visibility="collapsed", key="report_comment")
 
-st.markdown('<div class="section-title" style="margin-top: 20px;">3. 人事・車両・インシデントなどの報告</div>', unsafe_allow_html=True)
-incident_comment = st.text_area("", placeholder="人事異動、車両の状況、ヒヤリハット・インシデント等の共有事項を入力してください...", height=180, label_visibility="collapsed", key="incident_comment")
+st.markdown('<div class="section-title" style="margin-top: 15px;">3. 人事・車両・インシデントなどの報告</div>', unsafe_allow_html=True)
+incident_comment = st.text_area("", placeholder="人事異動、車両の状況、ヒヤリハット・インシデント等の共有事項を入力してください...", height=120, label_visibility="collapsed", key="incident_comment")
 
-st.markdown('<div style="font-weight:bold; font-size:1.3rem; margin-top:25px; margin-bottom:10px;">次回会議日程　　　　月　　　日　（　　　）　　～　</div>', unsafe_allow_html=True)
+# Move "次回会議日程" to the bottom right of Page 1
+st.markdown('<div style="text-align: right; font-weight:bold; font-size:1.3rem; margin-top:20px; margin-bottom:10px;">次回会議日程　　　　月　　　日　（　　　）　　～　</div>', unsafe_allow_html=True)
 
 # --- UI 2ページ目 ---
 st.markdown('<div style="page-break-before: always; height:0;"></div>', unsafe_allow_html=True)
-st.markdown('<div style="margin-top: 30px;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="margin-top: 35px;"></div>', unsafe_allow_html=True)
 
 st.markdown(f'<div class="page2-title" style="font-size: 1.5rem; font-weight: bold; border-bottom: 2px solid #3B82F6; margin-bottom: 12px;">{facility} 日々実績データ（確定月・当月比較）</div>', unsafe_allow_html=True)
 
@@ -607,7 +606,7 @@ if curr_data_exists:
     wd_dict_p = dict(zip(wd_agg['曜日'], wd_agg['occ'])) if 'wd_agg' in locals() and not wd_agg.empty else {}
     
     comp_html = """
-    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 1.05rem; margin-bottom: 30px;">
+    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 1.05rem; margin-bottom: 25px;">
         <tr style="background-color: #E2E8F0; border: 1px solid #CBD5E1;">
             <th style="padding: 8px; border: 1px solid #CBD5E1;"></th>
             <th style="padding: 8px; border: 1px solid #CBD5E1;">月曜日</th>
@@ -637,7 +636,7 @@ if curr_data_exists:
     st.markdown(comp_html, unsafe_allow_html=True)
 
 
-st.markdown('<div class="no-print" style="margin-top:40px;"></div>', unsafe_allow_html=True)
+st.markdown('<div class="no-print" style="margin-top:20px;"></div>', unsafe_allow_html=True)
 
 st.markdown("""
 <style>
