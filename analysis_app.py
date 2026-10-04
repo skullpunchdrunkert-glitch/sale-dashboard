@@ -712,11 +712,11 @@ with col_btn1:
                     now_str,
                     month_str,
                     facility,
-                    confirmed_sales,
+                    int(confirmed_sales),
                     f"{(occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0:.2f}%",
                     f"{occ_week_p:.2f}%",
                     f"{occ_sat_p:.2f}%",
-                    projected_sales_c if curr_data_exists else 0,
+                    int(projected_sales_c) if curr_data_exists else 0,
                     f"{occ_c_total:.2f}%" if curr_data_exists else "0%",
                     comment_text,
                     incident_comment
