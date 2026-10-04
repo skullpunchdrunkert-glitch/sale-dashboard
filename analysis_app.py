@@ -65,14 +65,14 @@ if not file_sales or not file_sched_prev:
 try:
     # 1. 売上台帳の解析
     content_sales = file_sales.getvalue().decode('cp932', errors='replace')
-    sales_lines = content_sales.split('\\n')
+    sales_lines = content_sales.split('\n')
     header_idx = 0
     for i, line in enumerate(sales_lines):
         if "利用者氏名" in line and "介護保険給付額" in line:
             header_idx = i
             break
             
-    df_sales = pd.read_csv(io.StringIO('\\n'.join(sales_lines[header_idx:])))
+    df_sales = pd.read_csv(io.StringIO('\n'.join(sales_lines[header_idx:])))
     
     for col in ['介護保険給付額', '公費請求額', '利用者負担額', '特定入所者介護サービス費等', '食事代', 'おむつ・日常生活費・その他の費用', '合計']:
         if col in df_sales.columns:
@@ -93,13 +93,13 @@ try:
         st.warning("売上台帳から該当事業所の売上データが取得できませんでした。0円として計算します。")
 
     # 2. スケジュール(前月)の解析
-        sched_p_lines = file_sched_prev.getvalue().decode('cp932', errors='replace').split('\\n')
+    sched_p_lines = file_sched_prev.getvalue().decode('cp932', errors='replace').split('\n')
     header_idx_p = 0
     for i, line in enumerate(sched_p_lines):
         if "サービス日付" in line or "利用者氏名" in line:
             header_idx_p = i
             break
-    df_prev = pd.read_csv(io.StringIO('\\n'.join(sched_p_lines[header_idx_p:])))
+    df_prev = pd.read_csv(io.StringIO('\n'.join(sched_p_lines[header_idx_p:])))
     
     # --- 実績0（欠席など）のデータを除外 ---
     col_prev = 'サービス実績' if 'サービス実績' in df_prev.columns else (df_prev.columns[258] if len(df_prev.columns) > 258 else None)
