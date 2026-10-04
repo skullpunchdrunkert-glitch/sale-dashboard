@@ -78,6 +78,13 @@ try:
 
     # 2. スケジュール(前月)の解析
     df_prev = pd.read_csv(io.StringIO(file_sched_prev.getvalue().decode('cp932', errors='replace')))
+    
+    # --- 実績0（欠席など）のデータを除外 ---
+    col_prev = 'サービス実績' if 'サービス実績' in df_prev.columns else (df_prev.columns[258] if len(df_prev.columns) > 258 else None)
+    if col_prev:
+        actual_vals_p = pd.to_numeric(df_prev[col_prev], errors='coerce').fillna(0)
+        df_prev = df_prev[actual_vals_p != 0]
+        
     df_prev['サービス日付'] = pd.to_datetime(df_prev['サービス日付'], errors='coerce')
     df_prev = df_prev.dropna(subset=['サービス日付'])
     
@@ -117,6 +124,13 @@ curr_data_exists = False
 if file_sched_curr:
     try:
         df_curr = pd.read_csv(io.StringIO(file_sched_curr.getvalue().decode('cp932', errors='replace')))
+        
+        # --- 実績0（欠席など）のデータを除外 ---
+        col_curr = 'サービス実績' if 'サービス実績' in df_curr.columns else (df_curr.columns[258] if len(df_curr.columns) > 258 else None)
+        if col_curr:
+            actual_vals_c = pd.to_numeric(df_curr[col_curr], errors='coerce').fillna(0)
+            df_curr = df_curr[actual_vals_c != 0]
+            
         df_curr['サービス日付'] = pd.to_datetime(df_curr['サービス日付'], errors='coerce')
         df_curr = df_curr.dropna(subset=['サービス日付'])
         
