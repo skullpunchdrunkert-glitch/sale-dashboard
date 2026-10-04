@@ -210,120 +210,267 @@ except Exception as e:
 
 
 
-# --- UI 描画（1ページ目） ---
-st.markdown(f'<div class="report-title">{month_str} 確定分析レポート &nbsp;&nbsp;&nbsp; {facility}</div>', unsafe_allow_html=True)
 
-st.markdown(f'<div class="section-title">１．前月の営業報告（確定値） &nbsp;&nbsp;&nbsp; 営業日数 {total_days_p} 日</div>', unsafe_allow_html=True)
-st.markdown(f"""
-<div style="margin-left:20px; line-height: 1.6; font-size: 0.95rem;">
-    <div>のべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_p:,.0f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {users_week_p:,.0f} 人 &nbsp;&nbsp; 土曜 {users_sat_p:,.0f} 人)</div>
-    <div>1日平均利用者 &nbsp;&nbsp; <span class="kpi-main">{avg_total_p:.2f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {avg_week_p:.2f} 人 &nbsp;&nbsp; 土曜 {avg_sat_p:.2f} 人)</div>
-    <div>確定稼働率 &nbsp;&nbsp; (平日 <span style="text-decoration:underline;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土曜 <span style="text-decoration:underline;">{occ_sat_p:.2f} %</span>)</div>
-    <div style="margin-top: 5px; display: flex; align-items: flex-end;">
-        <div style="margin-right: 30px;">確定総売上 &nbsp;&nbsp; <span class="sales-highlight">¥{confirmed_sales:,.0f}</span></div>
-        <div style="margin-right: 30px;">確定平均客単価 &nbsp;&nbsp; <span class="sales-highlight">¥{unit_price:,.0f}</span></div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# --- UI 1ページ目 ---
+col_header1, col_header2 = st.columns([2, 1])
+with col_header1:
+    st.markdown(f'<div class="report-title">{month_str} 確定実績レポート &nbsp;&nbsp;&nbsp; {facility} &nbsp;&nbsp; <span style="font-size: 1rem; font-weight: normal; color: #475569;">設定定員: 平日 {cap_week}名 / 土祝 {cap_sat}名</span></div>', unsafe_allow_html=True)
+with col_header2:
+    st.write("") # Spacer
+
+st.markdown(f'<div class="section-title">1. 前月（確定）の営業報告 &nbsp;&nbsp;&nbsp; 営業日数 {total_days_p} 日</div>', unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
+
 with col1:
-    daily_prev['period'] = np.where(daily_prev['サービス日付'].dt.day <= 15, '前半', '後半')
-    avg_first = daily_prev[daily_prev['period']=='前半']['利用者数'].mean()
-    avg_second = daily_prev[daily_prev['period']=='後半']['利用者数'].mean()
-    if pd.isna(avg_first): avg_first = 0
-    if pd.isna(avg_second): avg_second = 0
-    
-    fig1 = go.Figure(go.Scatter(x=['前半', '後半', '合計'], y=[avg_first, avg_second, avg_total_p], mode='lines+markers', line=dict(color='#3b82f6', width=3), marker=dict(size=8)))
-    fig1.update_layout(title='平均人数の推移', height=200, margin=dict(l=20,r=30,t=30,b=10), yaxis=dict(range=[15, max(avg_first, avg_second, avg_total_p)+2]))
-    st.plotly_chart(fig1, use_container_width=True, config={'staticPlot': True})
-
-with col2:
-    weekday_order = {0:'月', 1:'火', 2:'水', 3:'木', 4:'金', 5:'土'}
-    d = daily_prev.copy()
-    d['曜日名'] = d['曜日'].map(weekday_order)
-    d['定員'] = d['曜日'].apply(lambda x: cap_sat if x == 5 else cap_week)
-    d['稼働率'] = d['利用者数'] / d['定員'] * 100
-    
-    d['曜日_cat'] = pd.Categorical(d['曜日名'], categories=['月','火','水','木','金','土'], ordered=True)
-    grp = d.groupby('曜日_cat', observed=False)['稼働率'].mean().reset_index().fillna(0)
-    fig2 = go.Figure(go.Bar(x=grp['曜日_cat'], y=grp['稼働率'], marker_color=['#22c55e', '#64748b', '#3b82f6', '#f97316', '#eab308', '#64748b'], text=[f"{v:.1f}%" for v in grp['稼働率']], textposition='auto'))
-    fig2.update_layout(title='曜日別 平均稼働率 (%)', height=200, margin=dict(l=20,r=30,t=30,b=10), yaxis=dict(range=[0, 110]))
-    st.plotly_chart(fig2, use_container_width=True, config={'staticPlot': True})
-
-if curr_data_exists:
-    st.markdown(f'<div class="section-title">２．当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日</div>', unsafe_allow_html=True)
     st.markdown(f"""
     <div style="margin-left:20px; line-height: 1.6; font-size: 0.95rem;">
-        <div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span></div>
-        <div style="margin-top: 5px; display: flex; align-items: flex-end;">
-            <div style="margin-right: 30px;">当月の売上着地予想 &nbsp;&nbsp; <span class="sales-highlight" style="color:#ef4444;">約 ¥{projected_sales_c:,.0f}</span></div>
-            <div style="font-size:0.85rem; color:#64748b; padding-bottom: 2px;">
-                ※前月の確定客単価（¥{unit_price:,.0f}） × 当月の着地予想人数（{projected_users_c:.0f}人）で算出
+        <div>のべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_p:,.0f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {users_week_p:,.0f} 人 &nbsp;&nbsp; 土祝 {users_sat_p:,.0f} 人)</div>
+        <div>1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_p:.2f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {avg_week_p:.2f} 人 &nbsp;&nbsp; 土祝 {avg_sat_p:.2f} 人)</div>
+        <div>稼働率 &nbsp;&nbsp; (平日 <span style="text-decoration:underline;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土祝 <span style="text-decoration:underline;">{occ_sat_p:.2f} %</span>)</div>
+        
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #CBD5E1;">
+            <div style="font-size: 1.1rem; font-weight: bold; color: #0F172A; margin-bottom: 5px;">確定売上 &nbsp;&nbsp; <span class="kpi-main kpi-sales" style="font-size: 1.4rem;">¥{confirmed_sales:,.0f}</span></div>
+            <div style="margin-left: 10px; color: #475569;">
+                ・介護保険請求額: ¥{insurance_sales:,.0f}<br>
+                ・自費請求額: ¥{selfpay_sales:,.0f}
+            </div>
+            <div style="margin-top: 10px;">確定客単価 &nbsp;&nbsp; <span class="kpi-main">¥{unit_price:,.0f}</span></div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 稼働率8割・8.5割との差額
+    total_cap_p = cap_week_total_p + cap_sat_total_p
+    sales_80 = total_cap_p * 0.8 * unit_price
+    sales_85 = total_cap_p * 0.85 * unit_price
+    diff_80 = confirmed_sales - sales_80
+    diff_85 = confirmed_sales - sales_85
+    
+    color_80 = "red" if diff_80 < 0 else "blue"
+    color_85 = "red" if diff_85 < 0 else "blue"
+    sign_80 = "" if diff_80 < 0 else "+"
+    sign_85 = "" if diff_85 < 0 else "+"
+    
+    st.markdown(f"""
+        <div style="margin-top: 15px; padding: 10px; background-color: #F8FAFC; border-radius: 5px;">
+            <div style="font-weight: bold; margin-bottom: 5px; font-size: 0.95rem;">目標稼働率との売上差額（実績ベース）</div>
+            <div style="font-size: 0.9rem;">
+                稼働率 80.0% の場合: <span style="color: {color_80};">{sign_80}¥{diff_80:,.0f}</span> (目標 ¥{sales_80:,.0f})<br>
+                稼働率 85.0% の場合: <span style="color: {color_85};">{sign_85}¥{diff_85:,.0f}</span> (目標 ¥{sales_85:,.0f})
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-    st.text_area("分析・申し送りコメント", value="前月の単価水準を維持しつつ、今月は予想売上ペースも好調に推移している。", height=60)
-else:
-    st.markdown('<div class="section-title">２．分析コメント</div>', unsafe_allow_html=True)
-    st.text_area("分析・申し送りコメント", value="前月は確定売上・単価ともに目標水準をクリア。後半にかけて稼働が安定した。", height=60)
 
-# --- ここで確実に改ページ ---
+with col2:
+    import plotly.graph_objects as go
+    if not daily_prev.empty:
+        fig1 = go.Figure()
+        fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=daily_prev['利用者数'], mode='lines+markers', line=dict(color='#2563EB', width=2), name='利用者数'))
+        fig1.update_layout(title='日別利用者数推移（確定月）', height=180, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]))
+        st.plotly_chart(fig1, use_container_width=True, config={'staticPlot': True})
+        
+        # 曜日別稼働率
+        wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
+        df_wd = daily_prev[daily_prev['曜日'] <= 5].copy()
+        if not df_wd.empty:
+            wd_agg = df_wd.groupby('曜日').agg(
+                users=('利用者数', 'sum'),
+                days=('利用者数', 'count')
+            ).reset_index()
+            
+            wd_agg['cap_total'] = wd_agg.apply(lambda r: r['days'] * (cap_sat if r['曜日'] == 5 else cap_week), axis=1)
+            wd_agg['occ'] = (wd_agg['users'] / wd_agg['cap_total']) * 100
+            wd_agg['wd_name'] = wd_agg['曜日'].map(wd_map)
+            
+            fig2 = go.Figure(data=[go.Bar(x=wd_agg['wd_name'], y=wd_agg['occ'], marker_color='#10B981')])
+            fig2.update_layout(title='曜日別稼働率（%）', height=180, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, 110]))
+            st.plotly_chart(fig2, use_container_width=True, config={'staticPlot': True})
+
+
+if curr_data_exists:
+    st.markdown(f'<div class="section-title" style="margin-top: 15px;">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日</div>', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style="margin-left:20px; line-height: 1.6; font-size: 0.95rem;">
+        <div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span></div>
+        <div style="margin-top: 5px; display: flex; align-items: flex-end;">
+            <div>当月の売上着地予想 &nbsp;&nbsp; <span class="kpi-main kpi-sales" style="color:#EF4444;">約 ¥{projected_sales_c:,.0f}</span></div>
+            <div style="font-size: 0.8rem; color:#64748B; margin-bottom:3px; margin-left: 10px;">※前月の確定客単価 (¥{unit_price:,.0f}) × 当月の着地予想人数 ({projected_users_c:,.0f}人) で算出</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+st.markdown('<div style="margin-top:20px; font-weight:bold; color:#0F172A; border-bottom:1px solid #CBD5E1; margin-bottom:10px;">分析・申し送りコメント</div>', unsafe_allow_html=True)
+st.text_area("", placeholder="こちらに会議用のコメントや共有事項を入力してください...", height=80, label_visibility="collapsed")
+
+# --- UI 2ページ目 ---
 st.markdown('<div style="page-break-before: always; height:0;"></div>', unsafe_allow_html=True)
 
-# --- UI 描画（2ページ目: カレンダー） ---
-_, last_day = calendar.monthrange(yr_p, mo_p)
-html = f"""
-<table class="page2-header-table">
-    <tr><td style="font-size:1.1rem; font-weight:bold; text-align:center;">{mo_p} 月 確定日別データ</td><td colspan="2">平日稼働率: {occ_week_p:.2f}%</td><td colspan="2">土曜稼働率: {occ_sat_p:.2f}%</td></tr>
-</table>
-<table class="page2-table">
-    <tr><th>日付</th><th>曜日</th><th>利用者数</th><th>稼働率</th></tr>
-"""
+# 確定月と当月の日々実績データの左右対比
+st.markdown(f'<div class="page2-title">{facility} 日々実績データ（確定月・当月比較）</div>', unsafe_allow_html=True)
 
-df_dict = {}
-for _, r in daily_prev.iterrows():
-    df_dict[r['サービス日付'].day] = r['利用者数']
+df_dict_p = {}
+if not daily_prev.empty:
+    for _, r in daily_prev.iterrows():
+        df_dict_p[r['サービス日付'].day] = r['利用者数']
         
+df_dict_c = {}
+if curr_data_exists and not daily_curr.empty:
+    for _, r in daily_curr.iterrows():
+        df_dict_c[r['サービス日付'].day] = r['予定者数']
+
 wd_str = ["月", "火", "水", "木", "金", "土", "日"]
 
+html_table = f"""
+<table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.85rem; margin-bottom: 20px;">
+    <tr style="background-color: #F1F5F9; border: 1px solid #CBD5E1;">
+        <th colspan="4" style="padding: 5px; border: 1px solid #CBD5E1;">【確定月】{mo_p}月</th>
+        <th colspan="4" style="padding: 5px; border: 1px solid #CBD5E1; background-color: #F0FDF4;">【当月】{curr_month_dt.month if curr_data_exists else '-'}月</th>
+    </tr>
+    <tr style="background-color: #F8FAFC; border: 1px solid #CBD5E1;">
+        <th style="border: 1px solid #CBD5E1; width: 8%;">日付</th>
+        <th style="border: 1px solid #CBD5E1; width: 7%;">曜日</th>
+        <th style="border: 1px solid #CBD5E1; width: 10%;">利用者数</th>
+        <th style="border: 1px solid #CBD5E1; width: 15%;">稼働率</th>
+        <th style="border: 1px solid #CBD5E1; width: 8%; background-color: #F0FDF4;">日付</th>
+        <th style="border: 1px solid #CBD5E1; width: 7%; background-color: #F0FDF4;">曜日</th>
+        <th style="border: 1px solid #CBD5E1; width: 10%; background-color: #F0FDF4;">利用者数</th>
+        <th style="border: 1px solid #CBD5E1; width: 15%; background-color: #F0FDF4;">稼働率</th>
+    </tr>
+"""
+
+import calendar
+import datetime
+_, last_day_p = calendar.monthrange(yr_p, mo_p)
+if curr_data_exists:
+    _, last_day_c = calendar.monthrange(curr_month_dt.year, curr_month_dt.month)
+else:
+    last_day_c = 0
+
+max_days = max(last_day_p, last_day_c)
+
 row_count = 0
-for day in range(1, last_day + 1):
-    dt = datetime(yr_p, mo_p, day)
-    w = dt.weekday()
-    if w == 6: continue
-        
-    cap = cap_sat if w == 5 else cap_week
-    users = df_dict.get(day, "")
-    occ_str = ""
-    cls_str = ""
-    if users != "":
-        occ = (users / cap) * 100
-        occ_str = f"{occ:.2f}"
-        if occ >= target_rate:
-            cls_str = ' class="target-ok"'
+for day in range(1, max_days + 1):
+    # 確定月
+    p_date_html = ""
+    p_wd_html = ""
+    p_users_html = ""
+    p_occ_html = ""
     
-    html += f"<tr><td>{mo_p}月{day}日</td><td>{wd_str[w]}</td><td>{users}</td><td{cls_str}>{occ_str}</td></tr>"
-    row_count += 1
+    if day <= last_day_p:
+        dt_p = datetime.date(yr_p, mo_p, day)
+        w_p = dt_p.weekday()
+        if w_p != 6: # exclude Sunday
+            cap = cap_sat if w_p == 5 else cap_week
+            users = df_dict_p.get(day, "")
+            occ_str = ""
+            cls_str = ""
+            if users != "":
+                occ = (users / cap) * 100
+                occ_str = f"{occ:.2f}%"
+                if occ >= target_rate:
+                    cls_str = ' style="font-weight:bold; color:#10B981;"'
+            p_date_html = f"{mo_p}/{day}"
+            p_wd_html = wd_str[w_p]
+            p_users_html = str(users)
+            p_occ_html = f"<span{cls_str}>{occ_str}</span>"
+            row_count += 1
+            
+    # 当月
+    c_date_html = ""
+    c_wd_html = ""
+    c_users_html = ""
+    c_occ_html = ""
+    
+    if curr_data_exists and day <= last_day_c:
+        dt_c = datetime.date(curr_month_dt.year, curr_month_dt.month, day)
+        w_c = dt_c.weekday()
+        if w_c != 6:
+            cap = cap_sat if w_c == 5 else cap_week
+            users = df_dict_c.get(day, "")
+            occ_str = ""
+            cls_str = ""
+            if users != "":
+                occ = (users / cap) * 100
+                occ_str = f"{occ:.2f}%"
+                if occ >= target_rate:
+                    cls_str = ' style="font-weight:bold; color:#10B981;"'
+            c_date_html = f"{curr_month_dt.month}/{day}"
+            c_wd_html = wd_str[w_c]
+            c_users_html = str(users)
+            c_occ_html = f"<span{cls_str}>{occ_str}</span>"
+            row_count = max(row_count, day) # Just to ensure we count rows
+            
+    # Print row if at least one side is not Sunday
+    if p_date_html != "" or c_date_html != "":
+        html_table += f"<tr><td style='border: 1px solid #CBD5E1;'>{p_date_html}</td><td style='border: 1px solid #CBD5E1;'>{p_wd_html}</td><td style='border: 1px solid #CBD5E1;'>{p_users_html}</td><td style='border: 1px solid #CBD5E1;'>{p_occ_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC;'>{c_date_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC;'>{c_wd_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC;'>{c_users_html}</td><td style='border: 1px solid #CBD5E1; background-color: #F8FAFC;'>{c_occ_html}</td></tr>"
 
-# 空行を埋めて高さを揃える
-while row_count < 27:
-    html += "<tr><td>&nbsp;</td><td></td><td></td><td></td></tr>"
-    row_count += 1
+html_table += "</table>"
+st.markdown(html_table, unsafe_allow_html=True)
 
-html += "</table>"
 
-st.markdown(f'<div class="page2-title">{facility} 前月実績（確定）</div>', unsafe_allow_html=True)
-st.markdown(html, unsafe_allow_html=True)
+# --- 曜日別稼働率の比較表 ---
+if curr_data_exists:
+    st.markdown('<div style="font-size:1.1rem; font-weight:bold; margin-top:20px; color:#1E293B;">確定月と当月の「曜日別稼働率」比較表</div>', unsafe_allow_html=True)
+    
+    # Calculate for current month
+    wd_agg_c = None
+    df_wd_c = daily_curr[daily_curr['曜日'] <= 5].copy()
+    if not df_wd_c.empty:
+        wd_agg_c = df_wd_c.groupby('曜日').agg(
+            users=('予定者数', 'sum'),
+            days=('予定者数', 'count')
+        ).reset_index()
+        wd_agg_c['cap_total'] = wd_agg_c.apply(lambda r: r['days'] * (cap_sat if r['曜日'] == 5 else cap_week), axis=1)
+        wd_agg_c['occ'] = (wd_agg_c['users'] / wd_agg_c['cap_total']) * 100
+        wd_dict_c = dict(zip(wd_agg_c['曜日'], wd_agg_c['occ']))
+    else:
+        wd_dict_c = {}
+        
+    wd_dict_p = dict(zip(wd_agg['曜日'], wd_agg['occ'])) if 'wd_agg' in locals() and not wd_agg.empty else {}
+    
+    comp_html = """
+    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem; margin-bottom: 20px;">
+        <tr style="background-color: #E2E8F0; border: 1px solid #CBD5E1;">
+            <th style="padding: 8px; border: 1px solid #CBD5E1;"></th>
+            <th style="padding: 8px; border: 1px solid #CBD5E1;">月曜日</th>
+            <th style="padding: 8px; border: 1px solid #CBD5E1;">火曜日</th>
+            <th style="padding: 8px; border: 1px solid #CBD5E1;">水曜日</th>
+            <th style="padding: 8px; border: 1px solid #CBD5E1;">木曜日</th>
+            <th style="padding: 8px; border: 1px solid #CBD5E1;">金曜日</th>
+            <th style="padding: 8px; border: 1px solid #CBD5E1;">土曜日</th>
+        </tr>
+    """
+    
+    comp_html += "<tr><td style='border: 1px solid #CBD5E1; font-weight:bold; background-color: #F8FAFC;'>【確定月】</td>"
+    for w in range(6):
+        occ = wd_dict_p.get(w, 0)
+        cls_str = ' style="border: 1px solid #CBD5E1; font-weight:bold; color: #EF4444; background-color: #FEE2E2;"' if occ >= 80 else ' style="border: 1px solid #CBD5E1;"'
+        comp_html += f"<td{cls_str}>{occ:.1f}%</td>"
+    comp_html += "</tr>"
+    
+    comp_html += "<tr><td style='border: 1px solid #CBD5E1; font-weight:bold; background-color: #F0FDF4;'>【当月予測】</td>"
+    for w in range(6):
+        occ = wd_dict_c.get(w, 0)
+        cls_str = ' style="border: 1px solid #CBD5E1; font-weight:bold; color: #EF4444; background-color: #FEE2E2;"' if occ >= 80 else ' style="border: 1px solid #CBD5E1;"'
+        comp_html += f"<td{cls_str}>{occ:.1f}%</td>"
+    comp_html += "</tr></table>"
+    
+    st.markdown(comp_html, unsafe_allow_html=True)
 
-# --- 印刷機能 ---
+
+# --- 印刷ボタン ---
 import streamlit.components.v1 as components
 components.html("""
     <div style="text-align: center; margin-top: 30px;">
-        <button style="padding: 14px 28px; background-color: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
+        <button style="padding: 14px 28px; background-color: #3B82F6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
         onclick="window.parent.print();">
-        🖨️ レポートをPDFに出力する
+            🖨️ PDFに出力する（印刷）
         </button>
+        <p style="font-size: 0.85rem; color: #64748B; margin-top: 10px;">
+            ※ Chrome等のブラウザの印刷機能を使用します。<br>
+            ※ 「送信先」を「PDFに保存」に設定し、レイアウトを「縦」にして保存してください。<br>
+            ※ 「背景のグラフィック」にチェックを入れると色が綺麗に印刷されます。
+        </p>
     </div>
-""", height=100)
+""", height=200)
