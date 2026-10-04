@@ -8,31 +8,7 @@ import io
 
 st.set_page_config(page_title="月次確定 分析ツール", layout="wide", initial_sidebar_state="expanded")
 
-st.markdown("""
-<style>
-    .report-title { font-size: 1.6rem; font-weight: bold; border-bottom: 2px solid #2dce89; padding-bottom: 3px; margin-bottom: 5px; color: #1f2937; }
-    .section-title { font-size: 1.15rem; font-weight: bold; background-color: #e2e8f0; padding: 2px 10px; border-left: 5px solid #475569; margin-top: 4px; margin-bottom: 2px; color: #1e293b; }
-    .kpi-main { font-size: 1.15rem; font-weight: bold; color: #0f172a; }
-    .sales-highlight { font-size: 1.35rem; font-weight: bold; color: #0f172a; border-bottom: 2px solid #2dce89; padding-bottom: 2px; }
-    .page2-title { font-size: 1.6rem; font-weight: bold; text-align: left; }
-    .page2-header-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 2px; }
-    .page2-header-table td { padding: 4px 10px; text-align: center; }
-    .page2-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; margin-bottom: 10px; }
-    .page2-table th, .page2-table td { border: 1px solid #111; padding: 2px; text-align: center; height: 28px; }
-    .page2-table th { background-color: #f8fafc; font-weight: 600; }
-    .target-ok { background-color: #bbf7d0 !important; font-weight: bold; }
-    .summary-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 5px; }
-    .summary-table th, .summary-table td { border: 1px solid #111; padding: 4px; text-align: center; }
-    @media print {
-        @page { size: A4 portrait; margin: 0; }
-        body { zoom: 0.85 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        header, .stSidebar, .stToolbar, footer { display: none !important; }
-        .element-container:has(iframe) { display: none !important; height: 0 !important; margin: 0 !important; padding: 0 !important; }
-        iframe { display: none !important; }
-        .block-container { padding: 12mm 10mm !important; margin: 0 !important; max-width: 100% !important; width: 100% !important; }
-    }
-</style>
-""", unsafe_allow_html=True)
+
 
 
 # --- モード選択 ---
@@ -316,6 +292,16 @@ except Exception as e:
 st.markdown("""
 <style>
 @media print {
+    /* Force page to A4 portrait and remove margins so we control it */
+    @page { size: A4 portrait; margin: 5mm; }
+    
+    /* Fix Plotly clipping: scale the charts inside the columns */
+    .stPlotlyChart {
+        transform: scale(0.75);
+        transform-origin: top left;
+        max-width: 130% !important; /* Allow it to overflow its container before scaling */
+    }
+    
     body {
         zoom: 0.65 !important; 
     }
@@ -440,7 +426,7 @@ with col2:
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
         
         fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=16)), height=240, margin=dict(l=15,r=15,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
-        st.plotly_chart(fig1, use_container_width=True, config={'staticPlot': True})
+        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False, 'responsive': True})
         
         wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
         df_wd = daily_prev[daily_prev['曜日'] <= 5].copy()
@@ -464,7 +450,7 @@ with col2:
             )])
             fig2.add_hline(y=80, line_dash="dash", line_color="red", annotation_text="8割ライン", annotation_position="top right")
             fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=16)), height=240, margin=dict(l=15,r=15,t=25,b=10), yaxis=dict(range=[0, 110]))
-            st.plotly_chart(fig2, use_container_width=True, config={'staticPlot': True})
+            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False, 'responsive': True})
 
 
 if curr_data_exists:
