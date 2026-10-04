@@ -2,7 +2,6 @@ import io
 import pandas as pd
 import streamlit as st
 import datetime
-import calendar
 
 # --- 設定 ---
 st.set_page_config(page_title="月次確定 分析ツール", layout="wide")
@@ -74,13 +73,13 @@ if file_sales and file_sched_prev:
         sales_lines = content_sales.split('\n')
         header_idx = 0
         for i, line in enumerate(sales_lines):
-            if "利用者氏名" in line and "介護保険給付額" in line:
+            if "利用者氏名" in line and "国保連請求額" in line:
                 header_idx = i
                 break
                 
         df_sales = pd.read_csv(io.StringIO('\n'.join(sales_lines[header_idx:])))
         
-        for col in ['介護保険給付額', '公費請求額', '利用者負担額', '特定入所者介護サービス費等', '食事代', 'おむつ・日常生活費・その他の費用', '合計']:
+        for col in ['国保連請求額', '公費請求額', '利用者負担額', '公費利用者負担額', '限度額超過額', '教材費', '昼食・おやつ・飲み物代', '合計']:
             if col in df_sales.columns:
                 df_sales[col] = pd.to_numeric(df_sales[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
                 
@@ -88,8 +87,8 @@ if file_sales and file_sched_prev:
         if df_fac_sales.empty:
             df_fac_sales = df_sales[df_sales['サービス種類'] == '利用者請求額合計']
             
-        ins_cols = ['介護保険給付額', '公費請求額', '利用者負担額']
-        self_cols = ['特定入所者介護サービス費等', '食事代', 'おむつ・日常生活費・その他の費用']
+        ins_cols = ['国保連請求額', '公費請求額', '利用者負担額', '公費利用者負担額']
+        self_cols = ['限度額超過額', '教材費', '昼食・おやつ・飲み物代']
         
         insurance_sales = df_fac_sales[ins_cols].sum().sum() if set(ins_cols).issubset(df_fac_sales.columns) else 0
         selfpay_sales = df_fac_sales[self_cols].sum().sum() if set(self_cols).issubset(df_fac_sales.columns) else 0
@@ -98,6 +97,13 @@ if file_sales and file_sched_prev:
         if confirmed_sales == 0:
             st.warning("売上台帳から該当事業所の売上データが取得できませんでした。0円として計算します。")
 
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        st.error(f"【売上台帳】のファイル読み込み中にエラーが発生しました。詳細: {e}")
+        st.stop()
+
+    try:
         # 2. スケジュール(前月)の解析
         sched_p_lines = file_sched_prev.getvalue().decode('cp932', errors='replace').split('\n')
         header_idx_p = 0
@@ -107,7 +113,6 @@ if file_sales and file_sched_prev:
                 break
         df_prev = pd.read_csv(io.StringIO('\n'.join(sched_p_lines[header_idx_p:])))
         
-        # --- 実績0（欠席など）のデータを除外 ---
         col_prev = 'サービス実績' if 'サービス実績' in df_prev.columns else (df_prev.columns[258] if len(df_prev.columns) > 258 else None)
         if col_prev:
             actual_vals_p = pd.to_numeric(df_prev[col_prev], errors='coerce').fillna(0)
@@ -142,7 +147,13 @@ if file_sales and file_sched_prev:
         occ_sat_p = (users_sat_p / cap_sat_total_p * 100) if cap_sat_total_p > 0 else 0
         
         unit_price = confirmed_sales / total_users_p if total_users_p > 0 else 0
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        st.error(f"【前月スケジュール】のファイル読み込み中にエラーが発生しました。詳細: {e}")
+        st.stop()
         
+    try:
         # 3. スケジュール(当月)の解析
         if file_sched_curr:
             sched_c_lines = file_sched_curr.getvalue().decode('cp932', errors='replace').split('\n')
@@ -185,11 +196,10 @@ if file_sales and file_sched_prev:
             curr_month_str = "当月"
             occ_week_c = occ_sat_c = forecast_sales = total_users_c = 0
             users_week_c = users_sat_c = cap_week_total_c = cap_sat_total_c = 0
-
     except Exception as e:
         import traceback
         traceback.print_exc()
-        st.error(f"ファイルの読み込み中にエラーが発生しました。詳細: {e}")
+        st.error(f"【当月スケジュール】のファイル読み込み中にエラーが発生しました。詳細: {e}")
         st.stop()
 
 
@@ -207,8 +217,6 @@ if file_sales and file_sched_prev:
             workbook = client.open_by_key(sheet_id)
             worksheet = workbook.worksheet("月次データ")
             
-            # 追加する行データ
-            # カラム: [年月, 事業所名, 確定総売上, 総利用者数, 平日稼働率, 土祝稼働率, 介護保険売上, 自費売上, 平日定員, 土祝定員]
             new_row = [
                 month_str,
                 facility,
