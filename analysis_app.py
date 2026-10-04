@@ -456,10 +456,11 @@ with col2:
             wd_agg['occ'] = (wd_agg['users'] / wd_agg['cap_total']) * 100
             wd_agg['wd_name'] = wd_agg['曜日'].map(wd_map)
             
+            bar_colors = ['#EF4444' if val >= 80 else '#10B981' for val in wd_agg['occ']]
             fig2 = go.Figure(data=[go.Bar(
                 x=wd_agg['wd_name'], 
                 y=wd_agg['occ'], 
-                marker_color='#10B981',
+                marker_color=bar_colors,
                 text=[f'{val:.1f}%' for val in wd_agg['occ']],
                 textposition='auto',
                 textfont=dict(size=15, color='white', weight='bold')
