@@ -462,7 +462,8 @@ with col2:
                 y=wd_agg['occ'], 
                 marker_color=bar_colors,
                 text=[f'{val:.1f}%' for val in wd_agg['occ']],
-                textposition='auto',
+                textposition='inside',
+                insidetextanchor='start',
                 textfont=dict(size=15, color='white', weight='bold')
             )])
             fig2.add_hline(y=80, line_dash="dash", line_color="red", annotation_text="8割ライン", annotation_position="top right")
