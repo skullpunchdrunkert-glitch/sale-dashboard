@@ -65,16 +65,14 @@ if not file_sales or not file_sched_prev:
 try:
     # 1. 売上台帳の解析
     content_sales = file_sales.getvalue().decode('cp932', errors='replace')
-    sales_lines = content_sales.split('
-')
+    sales_lines = content_sales.split('\\n')
     header_idx = 0
     for i, line in enumerate(sales_lines):
         if "利用者氏名" in line and "介護保険給付額" in line:
             header_idx = i
             break
             
-    df_sales = pd.read_csv(io.StringIO('
-'.join(sales_lines[header_idx:])))
+    df_sales = pd.read_csv(io.StringIO('\\n'.join(sales_lines[header_idx:])))
     
     for col in ['介護保険給付額', '公費請求額', '利用者負担額', '特定入所者介護サービス費等', '食事代', 'おむつ・日常生活費・その他の費用', '合計']:
         if col in df_sales.columns:
@@ -93,6 +91,49 @@ try:
 
     if confirmed_sales == 0:
         st.warning("売上台帳から該当事業所の売上データが取得できませんでした。0円として計算します。")
+
+    # 2. スケジュール(前月)の解析
+    df_prev = pd.read_csv(io.StringIO(file_sched_prev.getvalue().decode('cp932', errors='replace')))
+    
+    # --- 実績0（欠席など）のデータを除外 ---
+    col_prev = 'サービス実績' if 'サービス実績' in df_prev.columns else (df_prev.columns[258] if len(df_prev.columns) > 258 else None)
+    if col_prev:
+        actual_vals_p = pd.to_numeric(df_prev[col_prev], errors='coerce').fillna(0)
+        df_prev = df_prev[actual_vals_p != 0]
+        
+    df_prev['サービス日付'] = pd.to_datetime(df_prev['サービス日付'], errors='coerce')
+    df_prev = df_prev.dropna(subset=['サービス日付'])
+    
+    daily_prev = df_prev.groupby('サービス日付').size().reset_index(name='利用者数')
+    daily_prev['曜日'] = daily_prev['サービス日付'].dt.dayofweek
+    
+    prev_month_dt = daily_prev['サービス日付'].max()
+    month_str = prev_month_dt.strftime('%Y年%m月')
+    yr_p, mo_p = prev_month_dt.year, prev_month_dt.month
+    
+    total_users_p = daily_prev['利用者数'].sum()
+    days_week_p = len(daily_prev[daily_prev['曜日'] <= 4])
+    days_sat_p = len(daily_prev[daily_prev['曜日'] == 5])
+    total_days_p = days_week_p + days_sat_p
+    
+    users_week_p = daily_prev[daily_prev['曜日'] <= 4]['利用者数'].sum()
+    users_sat_p = daily_prev[daily_prev['曜日'] == 5]['利用者数'].sum()
+    
+    avg_total_p = total_users_p / total_days_p if total_days_p > 0 else 0
+    avg_week_p = users_week_p / days_week_p if days_week_p > 0 else 0
+    avg_sat_p = users_sat_p / days_sat_p if days_sat_p > 0 else 0
+    
+    cap_week_total_p = days_week_p * cap_week
+    cap_sat_total_p = days_sat_p * cap_sat
+    
+    occ_week_p = (users_week_p / cap_week_total_p * 100) if cap_week_total_p > 0 else 0
+    occ_sat_p = (users_sat_p / cap_sat_total_p * 100) if cap_sat_total_p > 0 else 0
+    
+    unit_price = confirmed_sales / total_users_p if total_users_p > 0 else 0
+
+except Exception as e:
+    st.error(f"前月ファイルの読み込み中にエラーが発生しました。詳細: {e}")
+    st.stop()
 
 
 # --- UI 描画（1ページ目） ---
