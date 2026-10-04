@@ -34,6 +34,85 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
+# --- モード選択 ---
+mode = st.sidebar.radio("モード選択", ["📝 月次レポート作成", "📊 過去データ閲覧"])
+st.sidebar.markdown("---")
+
+if mode == "📊 過去データ閲覧":
+    st.title("📊 過去の報告データ閲覧")
+    
+    FACILITY_CONFIG = {
+        "リハビリ教室新松戸": {"week": 84, "sat": 40},
+        "リハビリ教室馬橋2号館": {"week": 50, "sat": 40},
+        "ことばとからだのリハビリ教室": {"week": 27, "sat": 27},
+        "リハビリ教室サテライトクラス": {"week": 24, "sat": 24}
+    }
+    selected_facility = st.sidebar.selectbox("対象事業所選択", list(FACILITY_CONFIG.keys()), index=2)
+    
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+        import os
+        
+        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+        creds = None
+        if os.path.exists("credentials.json"):
+            creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
+        elif "gcp_service_account" in st.secrets:
+            creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+            
+        if creds:
+            client = gspread.authorize(creds)
+            sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
+            spreadsheet = client.open_by_key(sheet_id)
+            
+            ws_name = "管理者会議報告"
+            try:
+                ws = spreadsheet.worksheet(ws_name)
+                records = ws.get_all_records()
+                import pandas as pd
+                history_df = pd.DataFrame(records)
+                
+                if not history_df.empty:
+                    history_df = history_df[history_df['事業所'] == selected_facility]
+                    if not history_df.empty:
+                        months = history_df['対象月'].unique().tolist()
+                        selected_month = st.selectbox("保存年月を選択", ["すべて"] + months)
+                        
+                        if selected_month != "すべて":
+                            history_df = history_df[history_df['対象月'] == selected_month]
+                            
+                        st.dataframe(history_df, use_container_width=True)
+                        
+                        for _, row in history_df.iterrows():
+                            st.markdown(f"### {row.get('対象月', '')} の報告")
+                            
+                            col_a, col_b = st.columns(2)
+                            with col_a:
+                                st.markdown(f"**確定総売上:** ¥{row.get('確定総売上', 0):,}")
+                                st.markdown(f"**当月着地予測売上:** ¥{row.get('当月着地予測売上', 0):,}")
+                            with col_b:
+                                st.markdown(f"**前月総合稼働率:** {row.get('前月総合稼働率', '')}")
+                                st.markdown(f"**当月累積稼働率:** {row.get('当月累積稼働率', '')}")
+                                
+                            st.markdown("**営業状況コメント:**")
+                            st.info(row.get('営業状況コメント', '（コメントなし）'))
+                            st.markdown("---")
+                            
+                    else:
+                        st.info(f"{selected_facility} のデータはまだ保存されていません。")
+                else:
+                    st.info("スプレッドシートにデータがありません。")
+            except gspread.exceptions.WorksheetNotFound:
+                st.info("まだスプレッドシートに「管理者会議報告」のデータが保存されていません。（シート未作成）")
+        else:
+            st.error("認証情報が見つかりません。（Streamlit CloudのSecretsを設定してください）")
+            
+    except Exception as e:
+        st.error(f"データの読み込みに失敗しました: {e}")
+        
+    st.stop()
 with st.sidebar:
     st.header("📁 ファイル取り込み")
     file_sales = st.file_uploader("1. 売上台帳 (前月確定)", type=['csv'])
@@ -485,6 +564,22 @@ if curr_data_exists:
 
 st.markdown('<div style="margin-top:40px;"></div>', unsafe_allow_html=True)
 
+
+st.markdown('<div style="margin-top:40px;"></div>', unsafe_allow_html=True)
+
+# CSS for button sizing
+st.markdown("""
+<style>
+div.stButton > button {
+    font-size: 1.1rem !important;
+    font-weight: bold !important;
+    height: 60px !important;
+    border-radius: 8px !important;
+    width: 100% !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
@@ -548,11 +643,11 @@ with col_btn1:
         except Exception as e:
             st.error(f"スプレッドシート送信エラー: {e}")
 
-with col2: # Place print button in right col
+with col_btn2:
     import streamlit.components.v1 as components
     components.html("""
         <div style="text-align: center;">
-            <button style="width: 100%; padding: 14px 28px; background-color: #3B82F6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
+            <button style="width: 100%; height: 60px; background-color: #3B82F6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
             onclick="window.parent.print();">
                 🖨️ PDFに出力する（印刷）
             </button>
@@ -567,43 +662,3 @@ st.markdown("""
     ※ グラフが切れる場合は、印刷設定の「倍率（スケール）」を調整してください。
 </p>
 """, unsafe_allow_html=True)
-
-
-# --- 過去のデータ読み込み機能 ---
-if st.button("📊 スプレッドシートから過去のデータを読み込む"):
-    try:
-        import gspread
-        from google.oauth2.service_account import Credentials
-        import os
-        
-        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-        creds = None
-        if os.path.exists("credentials.json"):
-            creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
-        elif "gcp_service_account" in st.secrets:
-            creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
-            
-        if creds:
-            client = gspread.authorize(creds)
-            sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
-            spreadsheet = client.open_by_key(sheet_id)
-            
-            ws_name = "管理者会議報告"
-            ws = spreadsheet.worksheet(ws_name)
-            records = ws.get_all_records()
-            
-            import pandas as pd
-            history_df = pd.DataFrame(records)
-            if not history_df.empty:
-                # Filter for the current facility
-                history_df = history_df[history_df['事業所'] == facility]
-                if not history_df.empty:
-                    st.markdown(f"### {facility} の過去の報告履歴")
-                    st.dataframe(history_df, use_container_width=True)
-                else:
-                    st.info(f"{facility} のデータはまだ保存されていません。")
-            else:
-                st.info("スプレッドシートにデータがありません。")
-                
-    except Exception as e:
-        st.error(f"データの読み込みに失敗しました: {e}")
