@@ -211,7 +211,26 @@ except Exception as e:
 
 # --- UI 1ページ目 ---
 
-# 1. 表題の事業所名横の設定定員を右端に、フォントを大きく、稼働率8割の人数も表記、平日と土曜
+# --- CSS for Print ---
+st.markdown("""
+<style>
+@media print {
+    body {
+        zoom: 0.8 !important; /* Scale down to fit graphs on A4 */
+    }
+    .stApp {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    /* Force columns to avoid breaking or overflowing */
+    [data-testid="column"] {
+        flex: 1 1 0% !important;
+        width: 50% !important;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
 cap_week_80 = cap_week * 0.8
 cap_sat_80 = cap_sat * 0.8
 
@@ -231,7 +250,6 @@ st.markdown(f'<div class="section-title">1. 前月（確定）の営業報告 &n
 col1, col2 = st.columns(2)
 
 with col1:
-    # 3. HTML blank line issue fixed by keeping it compact and removing empty lines
     st.markdown(f"""<div style="margin-left:20px; line-height: 1.6; font-size: 0.95rem;">
 <div>のべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_p:,.0f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {users_week_p:,.0f} 人 &nbsp;&nbsp; 土曜 {users_sat_p:,.0f} 人)</div>
 <div>1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_p:.2f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {avg_week_p:.2f} 人 &nbsp;&nbsp; 土曜 {avg_sat_p:.2f} 人)</div>
@@ -266,14 +284,12 @@ with col2:
         fig1 = go.Figure()
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=daily_prev['利用者数'], mode='lines+markers', line=dict(color='#2563EB', width=2), name='利用者数'))
         
-        # 4. 稼働率8割のラインを赤線で示す
         target_80_y = [cap_sat * 0.8 if d.weekday() == 5 else cap_week * 0.8 for d in daily_prev['サービス日付']]
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
         
         fig1.update_layout(title='日別利用者数推移（確定月）', height=200, margin=dict(l=20,r=20,t=30,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
         st.plotly_chart(fig1, use_container_width=True, config={'staticPlot': True})
         
-        # 5. 曜日別稼働率グラフのフォントと赤線
         wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
         df_wd = daily_prev[daily_prev['曜日'] <= 5].copy()
         if not df_wd.empty:
@@ -286,7 +302,6 @@ with col2:
             wd_agg['occ'] = (wd_agg['users'] / wd_agg['cap_total']) * 100
             wd_agg['wd_name'] = wd_agg['曜日'].map(wd_map)
             
-            # Add text inside bars
             fig2 = go.Figure(data=[go.Bar(
                 x=wd_agg['wd_name'], 
                 y=wd_agg['occ'], 
@@ -309,71 +324,8 @@ if curr_data_exists:
 <div style="font-size: 0.8rem; color:#64748B; margin-bottom:3px; margin-left: 10px;">※前月の確定客単価 (¥{unit_price:,.0f}) × 当月の着地予想人数 ({projected_users_c:,.0f}人) で算出</div>
 </div></div>""", unsafe_allow_html=True)
     
-# 6. 「分析・申し送りコメント」の表記を前月・今月の営業状況コメントに変更し、入力欄を4段程度に
 st.markdown('<div style="margin-top:20px; font-weight:bold; color:#0F172A; border-bottom:1px solid #CBD5E1; margin-bottom:10px;">前月・今月の営業状況コメント</div>', unsafe_allow_html=True)
 comment_text = st.text_area("", placeholder="前月の総括や、今月の見込み・共有事項を入力してください...", height=120, label_visibility="collapsed", key="report_comment")
-
-# 7 & 8. スプレッドシートへ送信
-st.markdown('<div style="margin-top:20px; font-weight:bold; color:#0F172A; border-bottom:1px solid #CBD5E1; margin-bottom:10px;">Googleスプレッドシートへの報告</div>', unsafe_allow_html=True)
-if st.button("データをスプレッドシートに送信する", type="primary"):
-    try:
-        import gspread
-        from google.oauth2.service_account import Credentials
-        import os
-        
-        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-        creds = None
-        if os.path.exists("credentials.json"):
-            creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
-        elif "gcp_service_account" in st.secrets:
-            creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
-            
-        if creds:
-            client = gspread.authorize(creds)
-            sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
-            spreadsheet = client.open_by_key(sheet_id)
-            
-            ws_name = "管理者会議報告"
-            try:
-                ws = spreadsheet.worksheet(ws_name)
-            except gspread.exceptions.WorksheetNotFound:
-                ws = spreadsheet.add_worksheet(title=ws_name, rows="1000", cols="20")
-                headers = ['報告日時', '対象月', '事業所', '確定総売上', '前月総合稼働率', '前月平日稼働率', '前月土曜稼働率', '当月着地予測売上', '当月累積稼働率', '営業状況コメント']
-                ws.append_row(headers)
-            
-            records = ws.get_all_records()
-            row_to_update = None
-            for i, record in enumerate(records):
-                if str(record.get('対象月', '')) == str(month_str) and str(record.get('事業所', '')) == str(facility):
-                    row_to_update = i + 2
-                    break
-                    
-            from datetime import datetime as dt_now
-            now_str = dt_now.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            new_row = [
-                now_str,
-                month_str,
-                facility,
-                confirmed_sales,
-                f"{(occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0:.2f}%",
-                f"{occ_week_p:.2f}%",
-                f"{occ_sat_p:.2f}%",
-                projected_sales_c if curr_data_exists else 0,
-                f"{occ_c_total:.2f}%" if curr_data_exists else "0%",
-                comment_text
-            ]
-            
-            if row_to_update:
-                ws.update(f"A{row_to_update}:J{row_to_update}", [new_row])
-                st.success(f"スプレッドシート（{ws_name}タブ）の {month_str}・{facility} のデータを上書き更新しました！")
-            else:
-                ws.append_row(new_row)
-                st.success(f"スプレッドシート（{ws_name}タブ）へ {month_str}・{facility} のデータを新規送信しました！")
-        else:
-            st.error("認証情報(credentials.json)が見つかりません。")
-    except Exception as e:
-        st.error(f"スプレッドシート送信エラー: {e}")
 
 
 # --- UI 2ページ目 ---
@@ -432,7 +384,7 @@ for day in range(1, max_days + 1):
         try:
             dt_p = date(yr_p, mo_p, day)
             w_p = dt_p.weekday()
-            if w_p != 6: # exclude Sunday
+            if w_p != 6:
                 cap = cap_sat if w_p == 5 else cap_week
                 users = df_dict_p.get(day, "")
                 occ_str = ""
@@ -531,18 +483,127 @@ if curr_data_exists:
     st.markdown(comp_html, unsafe_allow_html=True)
 
 
-# --- 印刷ボタン ---
-import streamlit.components.v1 as components
-components.html("""
-    <div style="text-align: center; margin-top: 30px;">
-        <button style="padding: 14px 28px; background-color: #3B82F6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
-        onclick="window.parent.print();">
-            🖨️ PDFに出力する（印刷）
-        </button>
-        <p style="font-size: 0.85rem; color: #64748B; margin-top: 10px;">
-            ※ Chrome等のブラウザの印刷機能を使用します。<br>
-            ※ 「送信先」を「PDFに保存」に設定し、レイアウトを「縦」にして保存してください。<br>
-            ※ 「背景のグラフィック」にチェックを入れると色が綺麗に印刷されます。
-        </p>
-    </div>
-""", height=200)
+st.markdown('<div style="margin-top:40px;"></div>', unsafe_allow_html=True)
+
+col_btn1, col_btn2 = st.columns(2)
+
+with col_btn1:
+    if st.button("💾 データ保存", type="primary", use_container_width=True):
+        try:
+            import gspread
+            from google.oauth2.service_account import Credentials
+            import os
+            
+            scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+            creds = None
+            if os.path.exists("credentials.json"):
+                creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
+            elif "gcp_service_account" in st.secrets:
+                creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+                
+            if creds:
+                client = gspread.authorize(creds)
+                sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
+                spreadsheet = client.open_by_key(sheet_id)
+                
+                ws_name = "管理者会議報告"
+                try:
+                    ws = spreadsheet.worksheet(ws_name)
+                except gspread.exceptions.WorksheetNotFound:
+                    ws = spreadsheet.add_worksheet(title=ws_name, rows="1000", cols="20")
+                    headers = ['報告日時', '対象月', '事業所', '確定総売上', '前月総合稼働率', '前月平日稼働率', '前月土曜稼働率', '当月着地予測売上', '当月累積稼働率', '営業状況コメント']
+                    ws.append_row(headers)
+                
+                records = ws.get_all_records()
+                row_to_update = None
+                for i, record in enumerate(records):
+                    if str(record.get('対象月', '')) == str(month_str) and str(record.get('事業所', '')) == str(facility):
+                        row_to_update = i + 2
+                        break
+                        
+                from datetime import datetime as dt_now
+                now_str = dt_now.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                new_row = [
+                    now_str,
+                    month_str,
+                    facility,
+                    confirmed_sales,
+                    f"{(occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0:.2f}%",
+                    f"{occ_week_p:.2f}%",
+                    f"{occ_sat_p:.2f}%",
+                    projected_sales_c if curr_data_exists else 0,
+                    f"{occ_c_total:.2f}%" if curr_data_exists else "0%",
+                    comment_text
+                ]
+                
+                if row_to_update:
+                    ws.update(f"A{row_to_update}:J{row_to_update}", [new_row])
+                    st.success(f"スプレッドシートの {month_str}・{facility} のデータを上書き更新しました！")
+                else:
+                    ws.append_row(new_row)
+                    st.success(f"スプレッドシートへ {month_str}・{facility} のデータを新規保存しました！")
+            else:
+                st.error("認証情報(credentials.json)が見つかりません。")
+        except Exception as e:
+            st.error(f"スプレッドシート送信エラー: {e}")
+
+with col2: # Place print button in right col
+    import streamlit.components.v1 as components
+    components.html("""
+        <div style="text-align: center;">
+            <button style="width: 100%; padding: 14px 28px; background-color: #3B82F6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
+            onclick="window.parent.print();">
+                🖨️ PDFに出力する（印刷）
+            </button>
+        </div>
+    """, height=80)
+
+st.markdown("""
+<p style="font-size: 0.85rem; color: #64748B; margin-top: 5px; text-align: right;">
+    ※ Chrome等のブラウザの印刷機能を使用します。<br>
+    ※ 「送信先」を「PDFに保存」に設定し、レイアウトを「縦」にして保存してください。<br>
+    ※ 「背景のグラフィック」にチェックを入れると色が綺麗に印刷されます。<br>
+    ※ グラフが切れる場合は、印刷設定の「倍率（スケール）」を調整してください。
+</p>
+""", unsafe_allow_html=True)
+
+
+# --- 過去のデータ読み込み機能 ---
+if st.button("📊 スプレッドシートから過去のデータを読み込む"):
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+        import os
+        
+        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+        creds = None
+        if os.path.exists("credentials.json"):
+            creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
+        elif "gcp_service_account" in st.secrets:
+            creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+            
+        if creds:
+            client = gspread.authorize(creds)
+            sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
+            spreadsheet = client.open_by_key(sheet_id)
+            
+            ws_name = "管理者会議報告"
+            ws = spreadsheet.worksheet(ws_name)
+            records = ws.get_all_records()
+            
+            import pandas as pd
+            history_df = pd.DataFrame(records)
+            if not history_df.empty:
+                # Filter for the current facility
+                history_df = history_df[history_df['事業所'] == facility]
+                if not history_df.empty:
+                    st.markdown(f"### {facility} の過去の報告履歴")
+                    st.dataframe(history_df, use_container_width=True)
+                else:
+                    st.info(f"{facility} のデータはまだ保存されていません。")
+            else:
+                st.info("スプレッドシートにデータがありません。")
+                
+    except Exception as e:
+        st.error(f"データの読み込みに失敗しました: {e}")
