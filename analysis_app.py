@@ -1,18 +1,13 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-import calendar
-from datetime import datetime
+import datetime
+from datetime import datetime, date
 import io
+import pandas as pd
+import json
 
-st.set_page_config(page_title="月次確定 分析ツール", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(layout="wide", page_title="売上＆稼働率ダッシュボード")
 
-
-
-
-# --- モード選択 ---
-mode = st.sidebar.radio("モード選択", ["📝 月次レポート作成", "📊 過去データ閲覧"])
+mode = st.sidebar.radio("モード選択", ["📊 過去データ閲覧", "📝 新規データ分析"], index=1)
 st.sidebar.markdown("---")
 
 FACILITY_CONFIG = {
@@ -30,13 +25,10 @@ if mode == "📊 過去データ閲覧":
     st.markdown('<div class="report-title">📊 過去データ（実績表）</div>', unsafe_allow_html=True)
     st.markdown("Googleスプレッドシート（月次実績データ）に保存された過去の確定実績を一覧表で振り返ります。")
     
-
-
     try:
         import gspread
         from google.oauth2.service_account import Credentials
         import os
-        import pandas as pd
         
         scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         creds = None
@@ -58,20 +50,17 @@ if mode == "📊 過去データ閲覧":
                     st.stop()
                     
                 df_history = pd.DataFrame(records)
-                df_fac = df_history[df_history['事業所'] == selected_facility].copy()
+                df_fac = df_history[df_history['事業所'] == facility].copy()
                 
                 if df_fac.empty:
-                    st.info(f"{selected_facility} の過去データはまだ保存されていません。")
+                    st.info(f"{facility} の過去データはまだ保存されていません。")
                     st.stop()
                 
-                # Sort chronologically by 対象月, newest first
-                df_fac['対象月_str'] = df_fac['対象月'].astype(str)
-                df_fac = df_fac.sort_values('対象月_str', ascending=False)
+                df_fac['対象月str'] = df_fac['対象月'].astype(str)
+                df_fac = df_fac.sort_values('対象月str', ascending=False)
                 
-                # Create display dataframe
-                df_display = df_fac[['対象月_str', '営業日数', '延べ利用者数', '1日平均利用_平日', '1日平均利用_土曜', '総合稼働率', '要介護・支援割合', '確定総売上', '利用者単価']].copy()
+                df_display = df_fac[['対象月str', '営業日数', '延べ利用者数', '1日平均利用_平日', '1日平均利用_土曜', '総合稼働率', '要介護・支援割合', '確定総売上', '利用者単価']].copy()
                 
-                # Format columns
                 def format_yen(x):
                     try: return f"¥{int(x):,}"
                     except: return x
@@ -83,7 +72,7 @@ if mode == "📊 過去データ閲覧":
                 df_display['確定総売上'] = df_display['確定総売上'].apply(format_yen)
                 df_display['利用者単価'] = df_display['利用者単価'].apply(format_yen)
                 df_display['総合稼働率'] = df_display['総合稼働率'].apply(format_pct)
-                df_display.rename(columns={'対象月_str': '対象月'}, inplace=True)
+                df_display.rename(columns={'対象月str': '対象月'}, inplace=True)
                 
                 st.markdown("### 📈 実績一覧表")
                 st.dataframe(df_display, use_container_width=True, hide_index=True)
@@ -92,7 +81,7 @@ if mode == "📊 過去データ閲覧":
                 st.markdown("### 📝 過去の営業状況コメント履歴")
                 
                 for _, r in df_fac.iterrows(): 
-                    with st.expander(f"{r['対象月_str']} のレポート (報告日: {str(r.get('報告日時',''))[:10]})"):
+                    with st.expander(f"{r['対象月str']} のレポート (報告日: {str(r.get('報告日時',''))[:10]})"):
                         cc1, cc2 = st.columns(2)
                         with cc1:
                             st.markdown("**【営業状況コメント】**")
@@ -101,13 +90,181 @@ if mode == "📊 過去データ閲覧":
                             st.markdown("**【人事・車両・インシデント等】**")
                             st.warning(r.get('人事等コメント', '記載なし'))
             except gspread.exceptions.WorksheetNotFound:
-                st.info("過去データ（月次実績データ）がまだ存在しません。先にデータ保存を行ってください。")
+                st.info("過去データが存在しません。")
         else:
             st.error("認証情報が見つかりません。")
     except Exception as e:
         st.error(f"データ読み込みエラー: {e}")
         
     st.stop()
+
+else:
+    with st.sidebar:
+        st.header("📁 ファイル取り込み")
+        file_sales = st.file_uploader("1. 売上台帳 (前月確定)", type=['csv'])
+        file_sched_prev = st.file_uploader("2. スケジュール (前月確定)", type=['csv'])
+        file_sched_curr = st.file_uploader("3. スケジュール (当月経過・任意)", type=['csv'])
+
+        st.markdown("---")
+        st.header("⚙️ 事業所設定")
+        target_rate = st.slider("目標稼働率 (%)", 60, 100, 80, 5)
+
+    if not file_sales or not file_sched_prev:
+        st.info("👈 左側のメニューから、最低限「売上台帳(前月)」と「スケジュール(前月)」のCSVファイルをアップロードしてください。")
+        st.stop()
+
+    # --- データ解析（前月確定） ---
+    curr_data_exists = False
+    try:
+        # 1. 売上台帳の解析
+        content_sales = file_sales.getvalue().decode('cp932', errors='replace')
+        sales_lines = content_sales.split('\n')
+        header_idx = 0
+        for i, line in enumerate(sales_lines):
+            if "利用者氏名" in line and "国保連請求額" in line:
+                header_idx = i
+                break
+
+        df_sales = pd.read_csv(io.StringIO('\n'.join(sales_lines[header_idx:])))
+
+        for col in ['国保連請求額', '公費請求額', '利用者負担額', '公費利用者負担額', '限度額超過額', '教材費', '昼食・おやつ・飲み物代', '合計']:
+            if col in df_sales.columns:
+                df_sales[col] = pd.to_numeric(df_sales[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+
+        df_fac_sales = df_sales[(df_sales['事業所名'].astype(str).str.contains(facility, na=False)) & (df_sales['サービス種類'] == '利用者合計')]
+        if df_fac_sales.empty:
+            df_fac_sales = df_sales[df_sales['サービス種類'] == '利用者合計']
+
+        ins_cols = ['国保連請求額', '公費請求額', '利用者負担額', '公費利用者負担額']
+        self_cols = ['限度額超過額', '教材費', '昼食・おやつ・飲み物代']
+
+        insurance_sales = df_fac_sales[ins_cols].sum().sum() if set(ins_cols).issubset(df_fac_sales.columns) else 0
+        selfpay_sales = df_fac_sales[self_cols].sum().sum() if set(self_cols).issubset(df_fac_sales.columns) else 0
+        confirmed_sales = df_fac_sales['合計'].sum() if '合計' in df_fac_sales.columns else (insurance_sales + selfpay_sales)
+
+        if confirmed_sales == 0:
+            st.warning("売上台帳から該当事業所の売上データが取得できませんでした。0円として計算します。")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        st.error(f"【売上台帳】のファイル読み込み中にエラーが発生しました。詳細: {e}")
+        st.stop()
+
+    try:
+        # 2. スケジュール(前月)の解析
+        sched_p_lines = file_sched_prev.getvalue().decode('cp932', errors='replace').split('\n')
+        header_idx_p = 0
+        for i, line in enumerate(sched_p_lines):
+            if "サービス日付" in line or "利用者氏名" in line:
+                header_idx_p = i
+                break
+        df_prev = pd.read_csv(io.StringIO('\n'.join(sched_p_lines[header_idx_p:])))
+
+        col_prev = 'サービス実績' if 'サービス実績' in df_prev.columns else (df_prev.columns[258] if len(df_prev.columns) > 258 else None)
+        if col_prev:
+            actual_vals_p = pd.to_numeric(df_prev[col_prev], errors='coerce').fillna(0)
+            df_prev = df_prev[actual_vals_p != 0]
+
+        df_prev['サービス日付'] = pd.to_datetime(df_prev['サービス日付'], errors='coerce')
+        df_prev = df_prev.dropna(subset=['サービス日付'])
+
+        daily_prev = df_prev.groupby('サービス日付').size().reset_index(name='利用者数')
+        daily_prev['曜日'] = daily_prev['サービス日付'].dt.dayofweek
+
+        prev_month_dt = daily_prev['サービス日付'].max()
+        month_str = prev_month_dt.strftime('%Y年%m月')
+        yr_p, mo_p = prev_month_dt.year, prev_month_dt.month
+
+        total_users_p = daily_prev['利用者数'].sum()
+        days_week_p = len(daily_prev[daily_prev['曜日'] <= 4])
+        days_sat_p = len(daily_prev[daily_prev['曜日'] == 5])
+        total_days_p = days_week_p + days_sat_p
+
+        users_week_p = daily_prev[daily_prev['曜日'] <= 4]['利用者数'].sum()
+        users_sat_p = daily_prev[daily_prev['曜日'] == 5]['利用者数'].sum()
+
+        avg_total_p = total_users_p / total_days_p if total_days_p > 0 else 0
+        avg_week_p = users_week_p / days_week_p if days_week_p > 0 else 0
+        avg_sat_p = users_sat_p / days_sat_p if days_sat_p > 0 else 0
+
+        cap_week_total_p = days_week_p * cap_week
+        cap_sat_total_p = days_sat_p * cap_sat
+
+        occ_week_p = (users_week_p / cap_week_total_p * 100) if cap_week_total_p > 0 else 0
+        occ_sat_p = (users_sat_p / cap_sat_total_p * 100) if cap_sat_total_p > 0 else 0
+
+        unit_price = confirmed_sales / total_users_p if total_users_p > 0 else 0
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        st.error(f"【前月スケジュール】のファイル読み込み中にエラーが発生しました。詳細: {e}")
+        st.stop()
+
+    try:
+        # 3. スケジュール(当月)の解析
+        if file_sched_curr:
+            sched_c_lines = file_sched_curr.getvalue().decode('cp932', errors='replace').split('\n')
+            header_idx_c = 0
+            for i, line in enumerate(sched_c_lines):
+                if "サービス日付" in line or "利用者氏名" in line:
+                    header_idx_c = i
+                    break
+            df_curr = pd.read_csv(io.StringIO('\n'.join(sched_c_lines[header_idx_c:])))
+
+            col_curr = 'サービス予定' if 'サービス予定' in df_curr.columns else (df_curr.columns[258] if len(df_curr.columns) > 258 else None)
+            if col_curr:
+                plan_vals_c = pd.to_numeric(df_curr[col_curr], errors='coerce').fillna(0)
+                df_curr = df_curr[plan_vals_c != 0]
+
+            df_curr['サービス日付'] = pd.to_datetime(df_curr['サービス日付'], errors='coerce')
+            df_curr = df_curr.dropna(subset=['サービス日付'])
+
+            daily_curr = df_curr.groupby('サービス日付').size().reset_index(name='予定者数')
+            daily_curr['曜日'] = daily_curr['サービス日付'].dt.dayofweek
+
+            curr_month_dt = daily_curr['サービス日付'].max()
+            curr_month_str = curr_month_dt.strftime('%Y年%m月')
+
+            total_users_c = daily_curr['予定者数'].sum()
+            days_week_c = len(daily_curr[daily_curr['曜日'] <= 4])
+            days_sat_c = len(daily_curr[daily_curr['曜日'] == 5])
+
+            users_week_c = daily_curr[daily_curr['曜日'] <= 4]['予定者数'].sum()
+            users_sat_c = daily_curr[daily_curr['曜日'] == 5]['予定者数'].sum()
+
+            cap_week_total_c = days_week_c * cap_week
+            cap_sat_total_c = days_sat_c * cap_sat
+
+            occ_week_c = (users_week_c / cap_week_total_c * 100) if cap_week_total_c > 0 else 0
+            occ_sat_c = (users_sat_c / cap_sat_total_c * 100) if cap_sat_total_c > 0 else 0
+
+            forecast_sales = total_users_c * unit_price
+
+            total_days_c = days_week_c + days_sat_c
+            curr_data_exists = True
+
+            import calendar
+            _, last_day_c = calendar.monthrange(curr_month_dt.year, curr_month_dt.month)
+            total_biz_days_c = sum(1 for d in range(1, last_day_c + 1) if datetime(curr_month_dt.year, curr_month_dt.month, d).weekday() <= 5)
+            avg_total_c = total_users_c / (days_week_c + days_sat_c) if (days_week_c + days_sat_c) > 0 else 0
+            projected_users_c = avg_total_c * total_biz_days_c
+            projected_sales_c = projected_users_c * unit_price
+
+            occ_c_total = (total_users_c / (cap_week_total_c + cap_sat_total_c) * 100) if (cap_week_total_c + cap_sat_total_c) > 0 else 0
+        else:
+            curr_month_str = "当月"
+            occ_week_c = occ_sat_c = forecast_sales = total_users_c = 0
+            users_week_c = users_sat_c = cap_week_total_c = cap_sat_total_c = 0
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        st.error(f"【当月スケジュール】のファイル読み込み中にエラーが発生しました。詳細: {e}")
+        st.stop()
+
+
+
+
 
 # --- UI 1ページ目 ---
 
@@ -116,16 +273,7 @@ st.markdown("""
 <style>
 @media print {
     /* Set page to A4 portrait and scale down to ensure everything fits */
-    
     @page { size: A4 portrait; margin: 5mm; }
-    
-    /* Force all containers to allow overflow so Plotly doesn't clip */
-    .stApp, .block-container, [data-testid="stAppViewBlockContainer"], 
-    [data-testid="stVerticalBlock"], [data-testid="column"], 
-    .element-container, .stPlotlyChart {
-        overflow: visible !important;
-    }
-    
     body { zoom: 0.68 !important; }
     
     .stApp, [data-testid="stAppViewBlockContainer"], .block-container {
@@ -140,7 +288,7 @@ st.markdown("""
     
     /* Scale Plotly charts so they never clip, and align them to the right */
     .stPlotlyChart {
-        
+        transform: scale(0.70) !important;
         transform-origin: top right !important;
         max-width: none !important;
     }
@@ -264,8 +412,7 @@ with col2:
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
         
         fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=16)), height=250, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
-        fig1.update_layout(width=420)
-        st.plotly_chart(fig1, use_container_width=False, config={'displayModeBar': False})
+        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
         
         wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
         df_wd = daily_prev[daily_prev['曜日'] <= 5].copy()
@@ -279,24 +426,21 @@ with col2:
             wd_agg['occ'] = (wd_agg['users'] / wd_agg['cap_total']) * 100
             wd_agg['wd_name'] = wd_agg['曜日'].map(wd_map)
             
-            bar_colors = ['#F97316' if val >= 80 else '#10B981' for val in wd_agg['occ']]
             fig2 = go.Figure(data=[go.Bar(
                 x=wd_agg['wd_name'], 
                 y=wd_agg['occ'], 
-                marker_color=bar_colors,
+                marker_color='#10B981',
                 text=[f'{val:.1f}%' for val in wd_agg['occ']],
-                textposition='inside',
-                insidetextanchor='start',
+                textposition='auto',
                 textfont=dict(size=15, color='white', weight='bold')
             )])
             fig2.add_hline(y=80, line_dash="dash", line_color="red", annotation_text="8割ライン", annotation_position="top right")
             fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=16)), height=250, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, 110]))
-            fig2.update_layout(width=420)
-        st.plotly_chart(fig2, use_container_width=False, config={'displayModeBar': False})
+            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
 
 
 if curr_data_exists:
-    st.markdown(f'<div class="section-title" style="margin-top: 10px; font-size: 1.25rem !important;">2. 当月（会議当月）の営業経過・着地予想 <span style="font-size: 1.05rem; font-weight: normal; margin-left: 15px;">当月営業 {total_biz_days_c}日 (平日 {total_biz_week_c}日 土曜 {total_biz_sat_c}日) &nbsp;/&nbsp; 経過 {total_days_c}日 (平日 {days_week_c}日 土曜 {days_sat_c}日)</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-title" style="margin-top: 10px;">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日</div>', unsafe_allow_html=True)
     st.markdown(f"""<div style="margin-left:10px; line-height: 1.6; font-size: 1.15rem;">
 <div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_c:.2f}</span> 人 <span style="font-size:1.05rem;">(平日 {avg_week_c:.2f} 人 &nbsp; 土曜 {avg_sat_c:.2f} 人)</span></div>
 <div style="margin-top: 6px;">累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1.05rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_c:.2f} %</span> &nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_c:.2f} %</span>)</span></div>
@@ -507,15 +651,18 @@ with col_btn1:
                 sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
                 spreadsheet = client.open_by_key(sheet_id)
                 
-                ws_name = "月次実績データ"
+                ws_name = "管理者会議報告"
                 try:
                     ws = spreadsheet.worksheet(ws_name)
                 except gspread.exceptions.WorksheetNotFound:
                     ws = spreadsheet.add_worksheet(title=ws_name, rows="1000", cols="20")
-                    headers = ['報告日時', '対象月', '事業所', '営業日数', '延べ利用者数', '1日平均利用_平日', '1日平均利用_土曜', '要介護・支援割合', '確定総売上', '利用者単価', '総合稼働率', '平日稼働率', '土曜稼働率', '営業状況コメント', '人事等コメント']
+                    headers = ['報告日時', '対象月', '事業所', '確定総売上', '前月総合稼働率', '前月平日稼働率', '前月土曜稼働率', '当月着地予測売上', '当月累積稼働率', '営業状況コメント', '人事等コメント']
                     ws.append_row(headers)
                 
                 records = ws.get_all_records()
+                header_row = ws.row_values(1)
+                if '人事等コメント' not in header_row:
+                    ws.update_cell(1, len(header_row) + 1, '人事等コメント')
                 
                 row_to_update = None
                 for i, record in enumerate(records):
@@ -526,30 +673,22 @@ with col_btn1:
                 from datetime import datetime as dt_now
                 now_str = dt_now.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-                ratio_str_val = ratio_str if 'ratio_str' in locals() else "データなし"
-                overall_occ_val = (occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0
-                
                 new_row = [
                     now_str,
                     month_str,
                     facility,
-                    int(total_days_p),
-                    int(total_users_p),
-                    round(avg_week_p, 2),
-                    round(avg_sat_p, 2),
-                    ratio_str_val,
-                    int(confirmed_sales),
-                    int(unit_price),
-                    round(overall_occ_val, 2),
-                    round(occ_week_p, 2),
-                    round(occ_sat_p, 2),
+                    confirmed_sales,
+                    f"{(occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0:.2f}%",
+                    f"{occ_week_p:.2f}%",
+                    f"{occ_sat_p:.2f}%",
+                    projected_sales_c if curr_data_exists else 0,
+                    f"{occ_c_total:.2f}%" if curr_data_exists else "0%",
                     comment_text,
                     incident_comment
                 ]
                 
-                # Excel column O is the 15th letter
                 if row_to_update:
-                    ws.update(f"A{row_to_update}:O{row_to_update}", [new_row])
+                    ws.update(f"A{row_to_update}:K{row_to_update}", [new_row])
                     st.success(f"スプレッドシートの {month_str}・{facility} のデータを上書き更新しました！")
                 else:
                     ws.append_row(new_row)
