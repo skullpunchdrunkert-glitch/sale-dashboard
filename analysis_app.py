@@ -641,6 +641,7 @@ with col_btn1:
             import gspread
             from google.oauth2.service_account import Credentials
             import os
+            import datetime
             
             scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
             creds = None
@@ -654,51 +655,39 @@ with col_btn1:
                 sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
                 spreadsheet = client.open_by_key(sheet_id)
                 
-                ws_name = "管理者会議報告"
+                ws_name = "月次実績データ"
                 try:
                     ws = spreadsheet.worksheet(ws_name)
                 except gspread.exceptions.WorksheetNotFound:
-                    ws = spreadsheet.add_worksheet(title=ws_name, rows="1000", cols="20")
-                    headers = ['報告日時', '対象月', '事業所', '確定総売上', '前月総合稼働率', '前月平日稼働率', '前月土曜稼働率', '当月着地予測売上', '当月累積稼働率', '営業状況コメント', '人事等コメント']
+                    ws = spreadsheet.add_worksheet(title=ws_name, rows="100", cols="20")
+                    headers = ["報告日時", "対象月", "事業所", "営業日数", "延べ利用者数", "1日平均利用_平日", "1日平均利用_土曜", "要介護・支援割合", "確定総売上", "利用者単価", "総合稼働率", "営業状況コメント", "人事等コメント"]
                     ws.append_row(headers)
-                
-                records = ws.get_all_records()
-                header_row = ws.row_values(1)
-                if '人事等コメント' not in header_row:
-                    ws.update_cell(1, len(header_row) + 1, '人事等コメント')
-                
-                row_to_update = None
-                for i, record in enumerate(records):
-                    if str(record.get('対象月', '')) == str(month_str) and str(record.get('事業所', '')) == str(facility):
-                        row_to_update = i + 2
-                        break
-                        
-                from datetime import datetime as dt_now
-                now_str = dt_now.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
                 new_row = [
                     now_str,
                     month_str,
                     facility,
-                    confirmed_sales,
-                    f"{(occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0:.2f}%",
-                    f"{occ_week_p:.2f}%",
-                    f"{occ_sat_p:.2f}%",
-                    projected_sales_c if curr_data_exists else 0,
-                    f"{occ_c_total:.2f}%" if curr_data_exists else "0%",
+                    int(total_days_p),
+                    int(total_users_p),
+                    float(avg_week_p),
+                    float(avg_sat_p),
+                    float((users_care_p / total_users_p * 100) if total_users_p > 0 else 0),
+                    int(confirmed_sales),
+                    int(unit_price) if unit_price else 0,
+                    float((occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0),
                     comment_text,
                     incident_comment
                 ]
                 
-                if row_to_update:
-                    ws.update(f"A{row_to_update}:K{row_to_update}", [new_row])
-                    st.success(f"スプレッドシートの {month_str}・{facility} のデータを上書き更新しました！")
-                else:
-                    ws.append_row(new_row)
-                    st.success(f"スプレッドシートへ {month_str}・{facility} のデータを新規保存しました！")
+                ws.append_row(new_row)
+                st.success(f"✅ {month_str} の実績を『{ws_name}』シートに保存しました！")
             else:
-                st.error("認証情報(credentials.json)が見つかりません。")
+                st.error("認証情報が見つかりません。")
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             st.error(f"スプレッドシート送信エラー: {e}")
 
 with col_btn2:
