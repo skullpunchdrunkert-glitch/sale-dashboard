@@ -248,6 +248,8 @@ else:
             _, last_day_c = calendar.monthrange(curr_month_dt.year, curr_month_dt.month)
             total_biz_days_c = sum(1 for d in range(1, last_day_c + 1) if datetime(curr_month_dt.year, curr_month_dt.month, d).weekday() <= 5)
             avg_total_c = total_users_c / (days_week_c + days_sat_c) if (days_week_c + days_sat_c) > 0 else 0
+            avg_week_c = users_week_c / days_week_c if days_week_c > 0 else 0
+            avg_sat_c = users_sat_c / days_sat_c if days_sat_c > 0 else 0
             projected_users_c = avg_total_c * total_biz_days_c
             projected_sales_c = projected_users_c * unit_price
 
@@ -256,6 +258,7 @@ else:
             curr_month_str = "当月"
             occ_week_c = occ_sat_c = forecast_sales = total_users_c = 0
             users_week_c = users_sat_c = cap_week_total_c = cap_sat_total_c = 0
+            avg_week_c = avg_sat_c = avg_total_c = 0
     except Exception as e:
         import traceback
         traceback.print_exc()
