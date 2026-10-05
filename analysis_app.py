@@ -690,6 +690,17 @@ with col_btn1:
                     incident_comment
                 ]
                 
+
+                records = ws.get_all_values()
+                rows_to_delete = []
+                for i, row in enumerate(records):
+                    if i > 0 and len(row) > 2:
+                        if row[1] == month_str and row[2] == facility:
+                            rows_to_delete.append(i + 1)
+                
+                for r in reversed(rows_to_delete):
+                    ws.delete_rows(r)
+                    
                 ws.append_row(new_row)
                 st.success(f"✅ {month_str} の実績を『{ws_name}』シートに保存しました！")
             else:
