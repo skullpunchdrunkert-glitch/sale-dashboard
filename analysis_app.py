@@ -177,8 +177,15 @@ else:
         yr_p, mo_p = prev_month_dt.year, prev_month_dt.month
 
         total_users_p = daily_prev['利用者数'].sum()
-        df_care = df_prev[df_prev['サービス種類'].str.contains('介護', na=False)]
-        users_care_p = df_care['利用者氏名'].nunique() if not df_care.empty else 0
+        # Robust column search for Service Type and User Name
+        svc_col = next((c for c in df_prev.columns if 'サービス種類' in c or 'サービス名' in c or 'サービス' in c), None)
+        name_col = next((c for c in df_prev.columns if '利用者氏名' in c or '氏名' in c or '利用者' in c or '名前' in c), None)
+        
+        if svc_col and name_col:
+            df_care = df_prev[df_prev[svc_col].astype(str).str.contains('介護', na=False)]
+            users_care_p = df_care[name_col].nunique() if not df_care.empty else 0
+        else:
+            users_care_p = 0
         days_week_p = len(daily_prev[daily_prev['曜日'] <= 4])
         days_sat_p = len(daily_prev[daily_prev['曜日'] == 5])
         total_days_p = days_week_p + days_sat_p
