@@ -722,3 +722,61 @@ st.markdown("""
 </p>
 </div>
 """, unsafe_allow_html=True)
+
+if st.button("📥 この実績を確定して過去データに保存", type="primary"):
+        if not comment_text.strip():
+            st.warning("⚠️ 営業状況コメントが未入力です。")
+        else:
+            try:
+                import gspread
+                from google.oauth2.service_account import Credentials
+                import os
+                import datetime
+
+                scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+                creds = None
+                if os.path.exists("credentials.json"):
+                    creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
+                elif "gcp_service_account" in st.secrets:
+                    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+
+                if creds:
+                    client = gspread.authorize(creds)
+                    sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
+                    spreadsheet = client.open_by_key(sheet_id)
+
+                    ws_name = "月次実績データ"
+                    try:
+                        ws = spreadsheet.worksheet(ws_name)
+                    except gspread.exceptions.WorksheetNotFound:
+                        ws = spreadsheet.add_worksheet(title=ws_name, rows="100", cols="20")
+                        headers = ["報告日時", "対象月", "事業所", "営業日数", "延べ利用者数", "1日平均利用_平日", "1日平均利用_土曜", "要介護・支援割合", "確定総売上", "利用者単価", "総合稼働率", "営業状況コメント", "人事等コメント"]
+                        ws.append_row(headers)
+
+                    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    # Convert numpy/pandas int64 to standard python int/float for JSON serialization
+                    new_row = [
+                        now_str,
+                        month_str,
+                        facility,
+                        int(total_days_p),
+                        int(total_users_p),
+                        float(avg_week_p),
+                        float(avg_sat_p),
+                        float((users_care_p / total_users_p * 100) if total_users_p > 0 else 0),
+                        int(confirmed_sales),
+                        int(unit_price) if unit_price else 0,
+                        float((occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0),
+                        comment_text,
+                        incident_comment
+                    ]
+
+                    ws.append_row(new_row)
+                    st.success(f"✅ {month_str} の実績を『{ws_name}』シートに保存しました！")
+                else:
+                    st.error("認証情報が見つかりません。")
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                st.error(f"スプレッドシート保存エラー: {e}")
