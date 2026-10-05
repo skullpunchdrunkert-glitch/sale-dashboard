@@ -16,7 +16,8 @@ mode = st.sidebar.radio("モード選択", ["📝 月次レポート作成", "�
 st.sidebar.markdown("---")
 
 if mode == "📊 過去データ閲覧":
-    st.title("📊 過去の報告データ閲覧")
+    st.markdown('<div class="report-title">📊 過去データダッシュボード</div>', unsafe_allow_html=True)
+    st.markdown("Googleスプレッドシート（月次実績データ）に保存された過去の確定実績をグラフで可視化します。")
     
     FACILITY_CONFIG = {
         "リハビリ教室新松戸": {"week": 84, "sat": 40},
@@ -25,11 +26,14 @@ if mode == "📊 過去データ閲覧":
         "リハビリ教室サテライトクラス": {"week": 24, "sat": 24}
     }
     selected_facility = st.sidebar.selectbox("対象事業所選択", list(FACILITY_CONFIG.keys()), index=2)
-    
+
     try:
         import gspread
         from google.oauth2.service_account import Credentials
         import os
+        import pandas as pd
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
         
         scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         creds = None
@@ -43,54 +47,90 @@ if mode == "📊 過去データ閲覧":
             sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
             spreadsheet = client.open_by_key(sheet_id)
             
-            ws_name = "管理者会議報告"
             try:
-                ws = spreadsheet.worksheet(ws_name)
+                ws = spreadsheet.worksheet("月次実績データ")
                 records = ws.get_all_records()
-                import pandas as pd
-                history_df = pd.DataFrame(records)
+                if not records:
+                    st.info("データがまだありません。各月の実績を保存してください。")
+                    st.stop()
+                    
+                df_history = pd.DataFrame(records)
+                df_fac = df_history[df_history['事業所'] == selected_facility].copy()
                 
-                if not history_df.empty:
-                    history_df = history_df[history_df['事業所'] == selected_facility]
-                    if not history_df.empty:
-                        months = history_df['対象月'].unique().tolist()
-                        selected_month = st.selectbox("保存年月を選択", ["すべて"] + months)
-                        
-                        if selected_month != "すべて":
-                            history_df = history_df[history_df['対象月'] == selected_month]
-                            
-                        st.dataframe(history_df, use_container_width=True)
-                        
-                        for _, row in history_df.iterrows():
-                            st.markdown(f"### {row.get('対象月', '')} の報告")
-                            
-                            col_a, col_b = st.columns(2)
-                            with col_a:
-                                st.markdown(f"**確定総売上:** ¥{row.get('確定総売上', 0):,}")
-                                st.markdown(f"**当月着地予測売上:** ¥{row.get('当月着地予測売上', 0):,}")
-                            with col_b:
-                                st.markdown(f"**前月総合稼働率:** {row.get('前月総合稼働率', '')}")
-                                st.markdown(f"**当月累積稼働率:** {row.get('当月累積稼働率', '')}")
-                                
-                            st.markdown("**営業状況コメント:**")
-                            st.info(row.get('営業状況コメント', '（コメントなし）'))
-                            
-                            st.markdown("**人事・車両・インシデント等の報告:**")
-                            st.info(row.get('人事等コメント', '（報告なし）'))
-                            
-                            st.markdown("---")
-                            
-                    else:
-                        st.info(f"{selected_facility} のデータはまだ保存されていません。")
-                else:
-                    st.info("スプレッドシートにデータがありません。")
+                if df_fac.empty:
+                    st.info(f"{selected_facility} の過去データはまだ保存されていません。")
+                    st.stop()
+                
+                # Sort chronologically by 対象月
+                df_fac['対象月_str'] = df_fac['対象月'].astype(str)
+                df_fac = df_fac.sort_values('対象月_str')
+                
+                # Top metrics (Latest month)
+                latest = df_fac.iloc[-1]
+                st.markdown(f"### 最新月 ({latest['対象月_str']}) のハイライト")
+                colA, colB, colC, colD = st.columns(4)
+                with colA:
+                    st.metric("確定総売上", f"¥{latest.get('確定総売上', 0):,.0f}")
+                with colB:
+                    st.metric("総合稼働率", f"{latest.get('総合稼働率', 0):.1f}%")
+                with colC:
+                    st.metric("延べ利用者数", f"{latest.get('延べ利用者数', 0):,.0f}人")
+                with colD:
+                    st.metric("利用者単価", f"¥{latest.get('利用者単価', 0):,.0f}")
+                
+                st.markdown("---")
+                
+                # Row 1: Sales and Users
+                c1, c2 = st.columns(2)
+                with c1:
+                    fig_sales = go.Figure()
+                    fig_sales.add_trace(go.Bar(x=df_fac['対象月_str'], y=df_fac['確定総売上'], marker_color='#3B82F6', text=df_fac['確定総売上'].apply(lambda x: f"¥{x:,.0f}"), textposition='auto'))
+                    fig_sales.update_layout(title='💰 確定総売上の推移', margin=dict(l=20,r=20,t=40,b=20), height=300)
+                    st.plotly_chart(fig_sales, use_container_width=True)
+                with c2:
+                    fig_users = go.Figure()
+                    fig_users.add_trace(go.Bar(x=df_fac['対象月_str'], y=df_fac['延べ利用者数'], marker_color='#10B981', text=df_fac['延べ利用者数'].apply(lambda x: f"{x:,.0f}人"), textposition='auto'))
+                    fig_users.update_layout(title='👥 延べ利用者数の推移', margin=dict(l=20,r=20,t=40,b=20), height=300)
+                    st.plotly_chart(fig_users, use_container_width=True)
+                
+                # Row 2: Occupancy and Avg Users
+                c3, c4 = st.columns(2)
+                with c3:
+                    fig_occ = go.Figure()
+                    fig_occ.add_trace(go.Scatter(x=df_fac['対象月_str'], y=df_fac['総合稼働率'], mode='lines+markers', name='総合', line=dict(color='#8B5CF6', width=3)))
+                    fig_occ.add_trace(go.Scatter(x=df_fac['対象月_str'], y=df_fac['平日稼働率'], mode='lines', name='平日', line=dict(color='#EC4899', dash='dash')))
+                    fig_occ.add_trace(go.Scatter(x=df_fac['対象月_str'], y=df_fac['土曜稼働率'], mode='lines', name='土曜', line=dict(color='#F59E0B', dash='dash')))
+                    fig_occ.add_hline(y=80, line_dash="dot", line_color="red", annotation_text="8割")
+                    fig_occ.update_layout(title='📈 稼働率の推移 (%)', margin=dict(l=20,r=20,t=40,b=20), height=300, yaxis=dict(range=[0, 110]), legend=dict(orientation="h", y=-0.2))
+                    st.plotly_chart(fig_occ, use_container_width=True)
+                with c4:
+                    fig_avg = go.Figure()
+                    fig_avg.add_trace(go.Scatter(x=df_fac['対象月_str'], y=df_fac['1日平均利用_平日'], mode='lines+markers', name='平日', line=dict(color='#EC4899', width=2)))
+                    fig_avg.add_trace(go.Scatter(x=df_fac['対象月_str'], y=df_fac['1日平均利用_土曜'], mode='lines+markers', name='土曜', line=dict(color='#F59E0B', width=2)))
+                    fig_avg.update_layout(title='📊 1日平均利用者数の推移', margin=dict(l=20,r=20,t=40,b=20), height=300, legend=dict(orientation="h", y=-0.2))
+                    st.plotly_chart(fig_avg, use_container_width=True)
+                
+                st.markdown("---")
+                st.markdown("### 📝 過去の営業状況コメント履歴")
+                
+                # Show history in an expander or list
+                for _, r in df_fac.iloc[::-1].iterrows(): # Reverse chronological
+                    with st.expander(f"{r['対象月_str']} のレポート (報告日: {str(r.get('報告日時',''))[:10]})"):
+                        cc1, cc2 = st.columns(2)
+                        with cc1:
+                            st.markdown("**【営業状況コメント】**")
+                            st.info(r.get('営業状況コメント', '記載なし'))
+                            st.markdown(f"**要介護・支援割合**: {r.get('要介護・支援割合', '-')}")
+                        with cc2:
+                            st.markdown("**【人事・車両・インシデント等】**")
+                            st.warning(r.get('人事等コメント', '記載なし'))
+                            st.markdown(f"**営業日数**: {r.get('営業日数', '-')}日")
             except gspread.exceptions.WorksheetNotFound:
-                st.info("まだスプレッドシートに「管理者会議報告」のデータが保存されていません。（シート未作成）")
+                st.info("過去データ（月次実績データ）がまだ存在しません。先にデータ保存を行ってください。")
         else:
-            st.error("認証情報が見つかりません。（Streamlit CloudのSecretsを設定してください）")
-            
+            st.error("認証情報が見つかりません。")
     except Exception as e:
-        st.error(f"データの読み込みに失敗しました: {e}")
+        st.error(f"データ読み込みエラー: {e}")
         
     st.stop()
 with st.sidebar:
