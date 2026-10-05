@@ -686,18 +686,15 @@ with col_btn1:
                 sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
                 spreadsheet = client.open_by_key(sheet_id)
                 
-                ws_name = "管理者会議報告"
+                ws_name = "月次実績データ"
                 try:
                     ws = spreadsheet.worksheet(ws_name)
                 except gspread.exceptions.WorksheetNotFound:
                     ws = spreadsheet.add_worksheet(title=ws_name, rows="1000", cols="20")
-                    headers = ['報告日時', '対象月', '事業所', '確定総売上', '前月総合稼働率', '前月平日稼働率', '前月土曜稼働率', '当月着地予測売上', '当月累積稼働率', '営業状況コメント', '人事等コメント']
+                    headers = ['報告日時', '対象月', '事業所', '営業日数', '延べ利用者数', '1日平均利用_平日', '1日平均利用_土曜', '要介護・支援割合', '確定総売上', '利用者単価', '総合稼働率', '平日稼働率', '土曜稼働率', '営業状況コメント', '人事等コメント']
                     ws.append_row(headers)
                 
                 records = ws.get_all_records()
-                header_row = ws.row_values(1)
-                if '人事等コメント' not in header_row:
-                    ws.update_cell(1, len(header_row) + 1, '人事等コメント')
                 
                 row_to_update = None
                 for i, record in enumerate(records):
@@ -708,22 +705,30 @@ with col_btn1:
                 from datetime import datetime as dt_now
                 now_str = dt_now.now().strftime("%Y-%m-%d %H:%M:%S")
                 
+                ratio_str_val = ratio_str if 'ratio_str' in locals() else "データなし"
+                overall_occ_val = (occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0
+                
                 new_row = [
                     now_str,
                     month_str,
                     facility,
+                    int(total_days_p),
+                    int(total_users_p),
+                    round(avg_week_p, 2),
+                    round(avg_sat_p, 2),
+                    ratio_str_val,
                     int(confirmed_sales),
-                    f"{(occ_week_p*days_week_p + occ_sat_p*days_sat_p)/total_days_p if total_days_p>0 else 0:.2f}%",
-                    f"{occ_week_p:.2f}%",
-                    f"{occ_sat_p:.2f}%",
-                    int(projected_sales_c) if curr_data_exists else 0,
-                    f"{occ_c_total:.2f}%" if curr_data_exists else "0%",
+                    int(unit_price),
+                    round(overall_occ_val, 2),
+                    round(occ_week_p, 2),
+                    round(occ_sat_p, 2),
                     comment_text,
                     incident_comment
                 ]
                 
+                # Excel column O is the 15th letter
                 if row_to_update:
-                    ws.update(f"A{row_to_update}:K{row_to_update}", [new_row])
+                    ws.update(f"A{row_to_update}:O{row_to_update}", [new_row])
                     st.success(f"スプレッドシートの {month_str}・{facility} のデータを上書き更新しました！")
                 else:
                     ws.append_row(new_row)
