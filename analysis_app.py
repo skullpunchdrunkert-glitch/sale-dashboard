@@ -290,7 +290,7 @@ st.markdown("""
 <style>
 @media print {
     @page { size: A4 portrait; margin: 10mm; }
-    body { zoom: 0.68 !important; }
+    body { zoom: 0.58 !important; }
     
     /* FORCE Plotly charts to NEVER overflow the page, by overriding their hardcoded SVG widths */
     [data-testid="stPlotlyChart"], 
@@ -301,7 +301,6 @@ st.markdown("""
     .js-plotly-plot svg {
         width: 100% !important;
         max-width: 100% !important;
-        height: auto !important;
     }
     
     .stApp, [data-testid="stAppViewBlockContainer"], .block-container {
@@ -310,11 +309,11 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    [data-testid="stSidebar"], .stButton, .no-print, iframe {
+    [data-testid="stSidebar"], .stButton, .no-print {
         display: none !important;
     }
     
-    .element-container:has(iframe) { display: none !important; }
+    
 }
 div.stMarkdown {
     font-size: 1.5rem;
