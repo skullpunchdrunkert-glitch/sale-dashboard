@@ -174,6 +174,9 @@ else:
 
         prev_month_dt = daily_prev['サービス日付'].max()
         month_str = prev_month_dt.strftime('%Y年%m月')
+        meeting_year = prev_month_dt.year + (prev_month_dt.month // 12)
+        meeting_month = (prev_month_dt.month % 12) + 1
+        meeting_month_str = f"{meeting_year}年{meeting_month}月度"
         yr_p, mo_p = prev_month_dt.year, prev_month_dt.month
 
         total_users_p = daily_prev['利用者数'].sum()
@@ -202,6 +205,8 @@ else:
 
         occ_week_p = (users_week_p / cap_week_total_p * 100) if cap_week_total_p > 0 else 0
         occ_sat_p = (users_sat_p / cap_sat_total_p * 100) if cap_sat_total_p > 0 else 0
+        total_cap_p_temp = cap_week_total_p + cap_sat_total_p
+        occ_p_total = (total_users_p / total_cap_p_temp * 100) if total_cap_p_temp > 0 else 0
 
         unit_price = confirmed_sales / total_users_p if total_users_p > 0 else 0
     except Exception as e:
@@ -354,7 +359,7 @@ cap_sat_80 = cap_sat * 0.8
 st.markdown(f"""
 <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #3B82F6; padding-bottom: 8px; margin-bottom: 12px;">
     <div>
-        <div class="report-title" style="border: none; padding: 0; margin: 0;">{month_str} 管理者会議報告</div>
+        <div class="report-title" style="border: none; padding: 0; margin: 0;">{meeting_month_str} 管理者会議報告</div>
         <div style="font-size: 1.5rem; font-weight: bold; color: #334155; margin-top: 8px;">{facility}</div>
     </div>
     <div>
@@ -388,7 +393,7 @@ with col1:
     st.markdown(f"""<div style="margin-left:10px; line-height: 1.7; font-size: 1.15rem;">
 <div>のべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_p:,.0f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {users_week_p:,.0f} 人 &nbsp;&nbsp; 土曜 {users_sat_p:,.0f} 人)</div>
 <div>1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_p:.2f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {avg_week_p:.2f} 人 &nbsp;&nbsp; 土曜 {avg_sat_p:.2f} 人)</div>
-<div>稼働率 &nbsp;&nbsp; (平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_p:.2f} %</span>)</div>
+<div>稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_p_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1.05rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_p:.2f} %</span>)</span></div>
 <div style="margin-top: 4px; color:#475569;">要介護・要支援（事業対象含む）割合 &nbsp;&nbsp; <span style="font-weight:bold; color:#1E293B;">{ratio_str if 'ratio_str' in locals() else 'データなし'}</span></div>
 <div style="margin-top: 15px; padding-top: 15px; border-top: 2px dashed #CBD5E1;">
 <div style="font-size: 1.25rem; font-weight: bold; color: #0F172A; margin-bottom: 5px;">確定総売上 &nbsp;&nbsp; <span class="kpi-main kpi-sales">¥{confirmed_sales:,.0f}</span></div>
@@ -423,8 +428,8 @@ with col2:
         target_80_y = [cap_sat * 0.8 if d.weekday() == 5 else cap_week * 0.8 for d in daily_prev['サービス日付']]
         fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
         
-        fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=16)), height=250, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
-        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
+        fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=16)), height=350, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
+        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False, 'staticPlot': True})
         
         wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
         df_wd = daily_prev[daily_prev['曜日'] <= 5].copy()
@@ -447,12 +452,12 @@ with col2:
                 textfont=dict(size=15, color='white', weight='bold')
             )])
             fig2.add_hline(y=80, line_dash="dash", line_color="red", annotation_text="8割ライン", annotation_position="top right")
-            fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=16)), height=250, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, 110]))
-            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
+            fig2.update_layout(title=dict(text='曜日別稼働率（%）', font=dict(size=16)), height=350, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, 110]))
+            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False, 'staticPlot': True})
 
 
 if curr_data_exists:
-    st.markdown(f'<div class="section-title" style="margin-top: 10px;">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-title" style="margin-top: 10px;">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日 ／ 予定営業日数 {total_biz_days_c if curr_data_exists else 0} 日</div>', unsafe_allow_html=True)
     st.markdown(f"""<div style="margin-left:10px; line-height: 1.6; font-size: 1.15rem;">
 <div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_c:.2f}</span> 人 <span style="font-size:1.05rem;">(平日 {avg_week_c:.2f} 人 &nbsp; 土曜 {avg_sat_c:.2f} 人)</span></div>
 <div style="margin-top: 6px;">累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1.05rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_c:.2f} %</span> &nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_c:.2f} %</span>)</span></div>
