@@ -291,7 +291,7 @@ st.markdown("""
 @media print {
     /* Set page to A4 portrait and scale down to ensure everything fits */
     @page { size: A4 portrait; margin: 5mm; }
-    body { zoom: 0.68 !important; }
+    body { zoom: 0.63 !important; }
     
     .stApp, [data-testid="stAppViewBlockContainer"], .block-container {
         max-width: 100% !important;
@@ -299,16 +299,16 @@ st.markdown("""
         padding: 10px !important;
     }
     
+
+    .stPlotlyChart svg {
+        max-width: 100% !important;
+    }
     [data-testid="column"] {
         flex: 1 1 0% !important;
     }
     
     /* Scale Plotly charts so they never clip, and align them to the right */
-    .stPlotlyChart {
-        transform: scale(0.70) !important;
-        transform-origin: top right !important;
-        max-width: none !important;
-    }
+    
 
     /* Hide sidebar, buttons, and specific iframes (PDF button) */
     [data-testid="stSidebar"], .stButton, .no-print, iframe {
@@ -320,7 +320,7 @@ st.markdown("""
 }
 
 div.stMarkdown {
-    font-size: 1.15rem;
+    font-size: 1.5rem;
 }
 div[data-baseweb="textarea"] textarea {
     font-size: 1.35rem !important;
@@ -342,7 +342,7 @@ div[data-baseweb="textarea"] textarea {
     color: #0F172A;
 }
 .kpi-main {
-    font-size: 1.6rem !important;
+    font-size: 2.3rem !important;
     font-weight: bold;
     color: #1E293B;
 }
@@ -387,13 +387,13 @@ st.markdown(f"""
 st.markdown(f'<div class="section-title" style="margin-top: 0px;">1. 前月（確定）の営業報告 &nbsp;&nbsp;&nbsp; 営業日数 {total_days_p} 日</div>', unsafe_allow_html=True)
 
 # 60% : 40% (Make left wider to avoid wrap, right narrower to push right)
-col1, col2 = st.columns([1.3, 1.0])
+col1, col2 = st.columns([2.3, 1.0])
 
 with col1:
-    st.markdown(f"""<div style="margin-left:10px; line-height: 1.7; font-size: 1.15rem;">
+    st.markdown(f"""<div style="margin-left:10px; line-height: 1.7; font-size: 1.5rem;">
 <div>のべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_p:,.0f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {users_week_p:,.0f} 人 &nbsp;&nbsp; 土曜 {users_sat_p:,.0f} 人)</div>
 <div>1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_p:.2f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {avg_week_p:.2f} 人 &nbsp;&nbsp; 土曜 {avg_sat_p:.2f} 人)</div>
-<div>稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_p_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1.05rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_p:.2f} %</span>)</span></div>
+<div>稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_p_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1.35rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_p:.2f} %</span>)</span></div>
 <div style="margin-top: 4px; color:#475569;">要介護・要支援（事業対象含む）割合 &nbsp;&nbsp; <span style="font-weight:bold; color:#1E293B;">{ratio_str if 'ratio_str' in locals() else 'データなし'}</span></div>
 <div style="margin-top: 15px; padding-top: 15px; border-top: 2px dashed #CBD5E1;">
 <div style="font-size: 1.25rem; font-weight: bold; color: #0F172A; margin-bottom: 5px;">確定総売上 &nbsp;&nbsp; <span class="kpi-main kpi-sales">¥{confirmed_sales:,.0f}</span></div>
@@ -413,8 +413,8 @@ with col1:
     sign_85 = "" if diff_85 < 0 else "+"
     
     st.markdown(f"""<div style="margin-top: 15px; padding: 12px; background-color: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;">
-<div style="font-weight: bold; margin-bottom: 5px; font-size: 1.15rem;">目標稼働率との売上差額（実績ベース）</div>
-<div style="font-size: 1.1rem; line-height: 1.5;">
+<div style="font-weight: bold; margin-bottom: 5px; font-size: 1.5rem;">目標稼働率との売上差額（実績ベース）</div>
+<div style="font-size: 1.25rem; line-height: 1.5;">
 稼働率 80.0% の場合: <span style="color: {color_80}; font-weight:bold;">{sign_80}¥{diff_80:,.0f}</span> (目標 ¥{sales_80:,.0f})<br>
 稼働率 85.0% の場合: <span style="color: {color_85}; font-weight:bold;">{sign_85}¥{diff_85:,.0f}</span> (目標 ¥{sales_85:,.0f})
 </div></div>""", unsafe_allow_html=True)
@@ -458,9 +458,9 @@ with col2:
 
 if curr_data_exists:
     st.markdown(f'<div class="section-title" style="margin-top: 10px;">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日 ／ 予定営業日数 {total_biz_days_c if curr_data_exists else 0} 日</div>', unsafe_allow_html=True)
-    st.markdown(f"""<div style="margin-left:10px; line-height: 1.6; font-size: 1.15rem;">
-<div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_c:.2f}</span> 人 <span style="font-size:1.05rem;">(平日 {avg_week_c:.2f} 人 &nbsp; 土曜 {avg_sat_c:.2f} 人)</span></div>
-<div style="margin-top: 6px;">累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1.05rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_c:.2f} %</span> &nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_c:.2f} %</span>)</span></div>
+    st.markdown(f"""<div style="margin-left:10px; line-height: 1.6; font-size: 1.5rem;">
+<div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_c:.2f}</span> 人 <span style="font-size:1.35rem;">(平日 {avg_week_c:.2f} 人 &nbsp; 土曜 {avg_sat_c:.2f} 人)</span></div>
+<div style="margin-top: 6px;">累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1.35rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_c:.2f} %</span> &nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_c:.2f} %</span>)</span></div>
 <div style="margin-top: 10px; display: flex; align-items: flex-end;">
 <div>当月の売上着地予想 &nbsp;&nbsp; <span class="kpi-main kpi-sales">約 ¥{projected_sales_c:,.0f}</span></div>
 <div style="font-size: 0.95rem; color:#64748B; margin-bottom:3px; margin-left: 15px;">※前月の確定客単価 (¥{unit_price:,.0f}) × 当月の着地予想人数 ({projected_users_c:,.0f}人)</div>
@@ -497,8 +497,8 @@ wd_str = ["月", "火", "水", "木", "金", "土", "日"]
 html_table = f"""
 <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 1.05rem; margin-bottom: 25px;">
     <tr style="background-color: #F1F5F9; border: 1px solid #CBD5E1;">
-        <th colspan="4" style="padding: 6px; border: 1px solid #CBD5E1; font-size: 1.15rem;">【確定月】{mo_p}月</th>
-        <th colspan="4" style="padding: 6px; border: 1px solid #CBD5E1; background-color: #F0FDF4; font-size: 1.15rem;">【当月】{curr_month_dt.month if curr_data_exists else '-'}月</th>
+        <th colspan="4" style="padding: 6px; border: 1px solid #CBD5E1; font-size: 1.5rem;">【確定月】{mo_p}月</th>
+        <th colspan="4" style="padding: 6px; border: 1px solid #CBD5E1; background-color: #F0FDF4; font-size: 1.5rem;">【当月】{curr_month_dt.month if curr_data_exists else '-'}月</th>
     </tr>
     <tr style="background-color: #F8FAFC; border: 1px solid #CBD5E1;">
         <th style="border: 1px solid #CBD5E1; width: 8%; padding: 4px;">日付</th>
@@ -585,7 +585,7 @@ st.markdown(html_table, unsafe_allow_html=True)
 
 # --- 曜日別稼働率の比較表 ---
 if curr_data_exists:
-    st.markdown('<div style="font-size:1.25rem; font-weight:bold; margin-top:20px; color:#1E293B; margin-bottom: 10px;">確定月と当月の「曜日別稼働率」比較表</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:1.35rem; font-weight:bold; margin-top:20px; color:#1E293B; margin-bottom: 10px;">確定月と当月の「曜日別稼働率」比較表</div>', unsafe_allow_html=True)
     
     wd_agg_c = None
     df_wd_c = daily_curr[daily_curr['曜日'] <= 5].copy()
