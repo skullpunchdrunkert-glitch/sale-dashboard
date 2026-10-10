@@ -300,7 +300,13 @@ st.markdown("""
     }
     
 
-    .stPlotlyChart svg {
+    
+
+    /* Ensure Plotly charts do not get cut off horizontally, and eliminate vertical gaps */
+    .stPlotlyChart {
+        transform: scale(0.72) !important;
+        transform-origin: top right !important;
+        margin-bottom: -100px !important;
         max-width: 100% !important;
     }
     [data-testid="column"] {
@@ -347,7 +353,7 @@ div[data-baseweb="textarea"] textarea {
     color: #1E293B;
 }
 .kpi-sales {
-    font-size: 1.9rem !important;
+    font-size: 3.2rem !important;
     color: #EF4444 !important;
 }
 </style>
@@ -396,12 +402,12 @@ with col1:
         care_ratio_p_str = "データなし"
 
     st.markdown(f"""<div style="margin-left:10px; line-height: 1.7; font-size: 1.5rem;">
-<div style="margin-bottom: 5px;">確定総売上 &nbsp;&nbsp; <span class="kpi-sales">¥{confirmed_sales:,.0f}</span></div>
+<div style="margin-bottom: 10px;"><span style="font-size: 1.8rem; font-weight: bold; color: #1E293B;">確定総売上</span> &nbsp;&nbsp; <span class="kpi-sales" style="font-weight: 900;">¥{confirmed_sales:,.0f}</span></div>
 <div style="font-size:1.15rem; color:#64748B; margin-bottom:10px; line-height:1.3; padding-left:5px;">
     ・介護保険請求額: ¥{insurance_sales:,.0f}<br>
     ・自費請求額: ¥{selfpay_sales:,.0f}
 </div>
-<div style="margin-top: 10px; margin-bottom: 15px;">確定客単価 &nbsp;&nbsp; <span class="kpi-main" style="font-size: 2.1rem !important;">¥{unit_price:,.0f}</span></div>
+<div style="margin-top: 10px; margin-bottom: 15px;">確定客単価 &nbsp;&nbsp; <span class="kpi-main" style="font-size: 2.4rem !important; color:#EF4444;">¥{unit_price:,.0f}</span></div>
 
 <div style="border-top: 2px dashed #CBD5E1; margin: 15px 0;"></div>
 
