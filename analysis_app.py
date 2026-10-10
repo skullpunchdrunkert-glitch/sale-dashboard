@@ -290,7 +290,19 @@ st.markdown("""
 <style>
 @media print {
     @page { size: A4 portrait; margin: 10mm; }
-    body { zoom: 0.52 !important; }
+    body { zoom: 0.68 !important; }
+    
+    /* FORCE Plotly charts to NEVER overflow the page, by overriding their hardcoded SVG widths */
+    [data-testid="stPlotlyChart"], 
+    [data-testid="stPlotlyChart"] > div, 
+    .js-plotly-plot, 
+    .plot-container, 
+    .svg-container, 
+    .js-plotly-plot svg {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+    }
     
     .stApp, [data-testid="stAppViewBlockContainer"], .block-container {
         max-width: 100% !important;
@@ -409,7 +421,7 @@ with col1:
     
     st.markdown(f"""<div style="margin-top: 15px; padding: 12px; background-color: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;">
 <div style="font-weight: bold; margin-bottom: 5px; font-size: 1.5rem;">目標稼働率との売上差額（実績ベース）</div>
-<div style="font-size: 1.25rem; line-height: 1.5;">
+<div style="font-size: 1.45rem; line-height: 1.6;">
 稼働率 80.0% の場合: <span style="color: {color_80}; font-weight:bold;">{sign_80}¥{diff_80:,.0f}</span> (目標 ¥{sales_80:,.0f})<br>
 稼働率 85.0% の場合: <span style="color: {color_85}; font-weight:bold;">{sign_85}¥{diff_85:,.0f}</span> (目標 ¥{sales_85:,.0f})
 </div></div>""", unsafe_allow_html=True)
