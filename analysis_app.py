@@ -303,10 +303,10 @@ st.markdown("""
     
 
     /* Ensure Plotly charts do not get cut off horizontally, and eliminate vertical gaps */
-    .stPlotlyChart {
-        transform: scale(0.72) !important;
-        transform-origin: top right !important;
-        margin-bottom: -100px !important;
+    [data-testid="stPlotlyChart"] {
+        transform: scale(0.68) !important;
+        transform-origin: top left !important;
+        margin-bottom: -110px !important;
         max-width: 100% !important;
     }
     [data-testid="column"] {
