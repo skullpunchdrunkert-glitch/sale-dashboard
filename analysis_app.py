@@ -294,7 +294,7 @@ st.markdown("""
 }
 @media print {
     @page { size: A4 portrait; margin: 10mm; }
-    body { zoom: 0.65 !important; }
+    body { zoom: 0.61 !important; }
     
     /* FORCE Plotly charts to NEVER overflow the page, by overriding their hardcoded SVG widths */
     [data-testid="stPlotlyChart"],
