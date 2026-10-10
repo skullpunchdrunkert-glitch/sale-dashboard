@@ -288,16 +288,20 @@ else:
 # --- CSS for Print and Styling ---
 st.markdown("""
 <style>
+/* Lock app width so screen perfectly matches PDF proportions */
+.block-container, [data-testid="stAppViewBlockContainer"] {
+    max-width: 1100px !important;
+}
 @media print {
     @page { size: A4 portrait; margin: 10mm; }
-    body { zoom: 0.58 !important; }
+    body { zoom: 0.65 !important; }
     
     /* FORCE Plotly charts to NEVER overflow the page, by overriding their hardcoded SVG widths */
-    [data-testid="stPlotlyChart"], 
-    [data-testid="stPlotlyChart"] > div, 
-    .js-plotly-plot, 
-    .plot-container, 
-    .svg-container, 
+    [data-testid="stPlotlyChart"],
+    [data-testid="stPlotlyChart"] > div,
+    .js-plotly-plot,
+    .plot-container,
+    .svg-container,
     .js-plotly-plot svg {
         width: 100% !important;
         max-width: 100% !important;
@@ -309,11 +313,9 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    [data-testid="stSidebar"], .stButton, .no-print {
+    [data-testid="stSidebar"], .stButton, [data-testid="stDownloadButton"], .stDownloadButton, .no-print {
         display: none !important;
     }
-    
-    
 }
 div.stMarkdown {
     font-size: 1.5rem;
@@ -643,6 +645,10 @@ st.markdown('<div class="no-print" style="margin-top:20px;"></div>', unsafe_allo
 
 st.markdown("""
 <style>
+/* Lock app width so screen perfectly matches PDF proportions */
+.block-container, [data-testid="stAppViewBlockContainer"] {
+    max-width: 1100px !important;
+}
 div.stButton > button {
     font-size: 1.1rem !important;
     font-weight: bold !important;
