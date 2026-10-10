@@ -387,19 +387,24 @@ st.markdown(f"""
 st.markdown(f'<div class="section-title" style="margin-top: 0px;">1. 前月（確定）の営業報告 &nbsp;&nbsp;&nbsp; 営業日数 {total_days_p} 日</div>', unsafe_allow_html=True)
 
 # 60% : 40% (Make left wider to avoid wrap, right narrower to push right)
-col1, col2 = st.columns([2.3, 1.0])
+col1, col2 = st.columns([1.5, 1.1])
 
 with col1:
     st.markdown(f"""<div style="margin-left:10px; line-height: 1.7; font-size: 1.5rem;">
-<div>のべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_p:,.0f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {users_week_p:,.0f} 人 &nbsp;&nbsp; 土曜 {users_sat_p:,.0f} 人)</div>
-<div>1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_p:.2f}</span> 人 &nbsp;&nbsp;&nbsp; (平日 {avg_week_p:.2f} 人 &nbsp;&nbsp; 土曜 {avg_sat_p:.2f} 人)</div>
+<div style="margin-bottom: 5px;">確定総売上 &nbsp;&nbsp; <span class="kpi-sales">¥{confirmed_sales:,.0f}</span></div>
+<div style="font-size:1.15rem; color:#64748B; margin-bottom:10px; line-height:1.3; padding-left:5px;">
+    ・介護保険請求額: ¥{insurance_sales:,.0f}<br>
+    ・自費請求額: ¥{self_sales:,.0f}
+</div>
+<div style="margin-top: 10px; margin-bottom: 15px;">確定客単価 &nbsp;&nbsp; <span class="kpi-main" style="font-size: 2.1rem !important;">¥{unit_price:,.0f}</span></div>
+
+<div style="border-top: 2px dashed #CBD5E1; margin: 15px 0;"></div>
+
+<div>のべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_p:,.0f}</span> 人 &nbsp;&nbsp;&nbsp; <span style="font-size:1.35rem;">(平日 {users_week_p:,.0f} 人 &nbsp;&nbsp; 土曜 {users_sat_p:,.0f} 人)</span></div>
+<div>1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_p:.2f}</span> 人 &nbsp;&nbsp;&nbsp; <span style="font-size:1.35rem;">(平日 {avg_week_p:.2f} 人 &nbsp;&nbsp; 土曜 {avg_sat_p:.2f} 人)</span></div>
 <div>稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_p_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1.35rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_p:.2f} %</span> &nbsp;&nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_p:.2f} %</span>)</span></div>
-<div style="margin-top: 4px; color:#475569;">要介護・要支援（事業対象含む）割合 &nbsp;&nbsp; <span style="font-weight:bold; color:#1E293B;">{ratio_str if 'ratio_str' in locals() else 'データなし'}</span></div>
-<div style="margin-top: 15px; padding-top: 15px; border-top: 2px dashed #CBD5E1;">
-<div style="font-size: 1.25rem; font-weight: bold; color: #0F172A; margin-bottom: 5px;">確定総売上 &nbsp;&nbsp; <span class="kpi-main kpi-sales">¥{confirmed_sales:,.0f}</span></div>
-<div style="margin-left: 10px; color: #475569; line-height: 1.3; font-size: 1.05rem;">・介護保険請求額: ¥{insurance_sales:,.0f}<br>・自費請求額: ¥{selfpay_sales:,.0f}</div>
-<div style="margin-top: 12px;">確定客単価 &nbsp;&nbsp; <span class="kpi-main">¥{unit_price:,.0f}</span></div>
-</div></div>""", unsafe_allow_html=True)
+<div style="margin-top: 4px;">要介護・要支援（事業対象含む）割合 &nbsp;&nbsp; <span class="kpi-main">{care_ratio_p_str}</span></div>
+</div>""", unsafe_allow_html=True)
 
     total_cap_p = cap_week_total_p + cap_sat_total_p
     sales_80 = total_cap_p * 0.8 * unit_price
