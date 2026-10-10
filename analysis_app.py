@@ -390,6 +390,11 @@ st.markdown(f'<div class="section-title" style="margin-top: 0px;">1. 前月（�
 col1, col2 = st.columns([1.5, 1.1])
 
 with col1:
+    if total_users_p > 0 and 'users_care_p' in locals():
+        care_ratio_p_str = f"{(users_care_p / total_users_p * 100):.1f} %"
+    else:
+        care_ratio_p_str = "データなし"
+
     st.markdown(f"""<div style="margin-left:10px; line-height: 1.7; font-size: 1.5rem;">
 <div style="margin-bottom: 5px;">確定総売上 &nbsp;&nbsp; <span class="kpi-sales">¥{confirmed_sales:,.0f}</span></div>
 <div style="font-size:1.15rem; color:#64748B; margin-bottom:10px; line-height:1.3; padding-left:5px;">
