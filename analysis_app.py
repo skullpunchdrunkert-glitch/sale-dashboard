@@ -394,7 +394,7 @@ with col1:
 <div style="margin-bottom: 5px;">確定総売上 &nbsp;&nbsp; <span class="kpi-sales">¥{confirmed_sales:,.0f}</span></div>
 <div style="font-size:1.15rem; color:#64748B; margin-bottom:10px; line-height:1.3; padding-left:5px;">
     ・介護保険請求額: ¥{insurance_sales:,.0f}<br>
-    ・自費請求額: ¥{self_sales:,.0f}
+    ・自費請求額: ¥{selfpay_sales:,.0f}
 </div>
 <div style="margin-top: 10px; margin-bottom: 15px;">確定客単価 &nbsp;&nbsp; <span class="kpi-main" style="font-size: 2.1rem !important;">¥{unit_price:,.0f}</span></div>
 
