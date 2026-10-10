@@ -289,42 +289,21 @@ else:
 st.markdown("""
 <style>
 @media print {
-    /* Set page to A4 portrait and scale down to ensure everything fits */
-    @page { size: A4 portrait; margin: 5mm; }
-    body { zoom: 0.63 !important; }
+    @page { size: A4 portrait; margin: 10mm; }
+    body { zoom: 0.52 !important; }
     
     .stApp, [data-testid="stAppViewBlockContainer"], .block-container {
         max-width: 100% !important;
         width: 100% !important;
-        padding: 10px !important;
+        padding: 0 !important;
     }
-    
 
-    
-
-    /* Ensure Plotly charts do not get cut off horizontally, and eliminate vertical gaps */
-    [data-testid="stPlotlyChart"] {
-        transform: scale(0.68) !important;
-        transform-origin: top left !important;
-        margin-bottom: -110px !important;
-        max-width: 100% !important;
-    }
-    [data-testid="column"] {
-        flex: 1 1 0% !important;
-    }
-    
-    /* Scale Plotly charts so they never clip, and align them to the right */
-    
-
-    /* Hide sidebar, buttons, and specific iframes (PDF button) */
     [data-testid="stSidebar"], .stButton, .no-print, iframe {
         display: none !important;
     }
     
-    /* Hide the parent containers of the iframe if possible */
     .element-container:has(iframe) { display: none !important; }
 }
-
 div.stMarkdown {
     font-size: 1.5rem;
 }
