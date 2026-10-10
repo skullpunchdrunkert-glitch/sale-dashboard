@@ -729,14 +729,14 @@ with col_btn1:
 
 with col_btn2:
     import streamlit.components.v1 as components
-    components.html("""
-        <div class="no-print" style="text-align: center;">
+    st.markdown("""
+        <div class="no-print" style="text-align: center; margin-top: 20px; margin-bottom: 20px;">
             <button style="width: 100%; height: 54px; background-color: #3B82F6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
-            onclick="window.parent.print();">
+            onclick="window.print();">
                 🖨️ PDFに出力する（印刷）
             </button>
         </div>
-    """, height=70)
+    """, unsafe_allow_html=True)
 
 st.markdown("""
 <div class="no-print">
