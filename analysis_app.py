@@ -430,13 +430,37 @@ with col1:
 with col2:
     import plotly.graph_objects as go
     if not daily_prev.empty:
+        daily_prev['定員'] = daily_prev['曜日'].apply(lambda w: cap_sat if w == 5 else cap_week)
+        daily_prev['稼働率'] = daily_prev.apply(lambda r: (r['利用者数'] / r['定員'] * 100) if r['定員'] > 0 else 0, axis=1)
+        
         fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=daily_prev['利用者数'], mode='lines+markers', line=dict(color='#2563EB', width=3), name='利用者数'))
+        fig1.add_trace(go.Scatter(
+            x=daily_prev['サービス日付'], 
+            y=daily_prev['稼働率'], 
+            mode='lines+markers', 
+            line=dict(color='#2563EB', width=3), 
+            name='稼働率',
+            hovertemplate='%{x|%m/%d}: %{y:.1f}%<extra></extra>'
+        ))
         
-        target_80_y = [cap_sat * 0.8 if d.weekday() == 5 else cap_week * 0.8 for d in daily_prev['サービス日付']]
-        fig1.add_trace(go.Scatter(x=daily_prev['サービス日付'], y=target_80_y, mode='lines', line=dict(color='red', dash='dash', width=2), name='8割ライン'))
+        target_80_y = [80] * len(daily_prev)
+        fig1.add_trace(go.Scatter(
+            x=daily_prev['サービス日付'], 
+            y=target_80_y, 
+            mode='lines', 
+            line=dict(color='red', dash='dash', width=2), 
+            name='8割ライン'
+        ))
         
-        fig1.update_layout(title=dict(text='日別利用者数推移（確定月）', font=dict(size=16)), height=350, margin=dict(l=5,r=5,t=25,b=10), yaxis=dict(range=[0, max(cap_week, cap_sat)+5]), legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1))
+        max_occ_p = daily_prev['稼働率'].max() if not daily_prev.empty else 100
+        y_max = max(110, int(max_occ_p + 10))
+        fig1.update_layout(
+            title=dict(text='日別稼働率推移（確定月）', font=dict(size=16)), 
+            height=350, 
+            margin=dict(l=5, r=5, t=25, b=10), 
+            yaxis=dict(range=[0, y_max], ticksuffix='%'), 
+            legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1)
+        )
         st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False, 'staticPlot': True})
         
         wd_map = {0: '月', 1: '火', 2: '水', 3: '木', 4: '金', 5: '土'}
