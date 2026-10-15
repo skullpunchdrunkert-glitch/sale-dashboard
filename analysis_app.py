@@ -294,7 +294,7 @@ st.markdown("""
 }
 @media print {
     @page { size: A4 portrait; margin: 10mm; }
-    body { zoom: 0.62 !important; }
+    body { zoom: 0.58 !important; }
     
     /* FORCE Plotly charts to NEVER overflow the page, by overriding their hardcoded SVG widths */
     [data-testid="stPlotlyChart"],
@@ -355,7 +355,7 @@ cap_week_80 = cap_week * 0.8
 cap_sat_80 = cap_sat * 0.8
 
 st.markdown(f"""
-<div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #3B82F6; padding-bottom: 10px; margin-top: 10px; margin-bottom: 18px;">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #3B82F6; padding-bottom: 8px; margin-top: 5px; margin-bottom: 12px;">
     <div>
         <div class="report-title" style="border: none; padding: 0; margin: 0;">{meeting_month_str} 管理者会議報告</div>
         <div style="font-size: 1.5rem; font-weight: bold; color: #334155; margin-top: 8px;">{facility}</div>
@@ -489,7 +489,7 @@ with col2:
 
 
 if curr_data_exists:
-    st.markdown(f'<div class="section-title" style="margin-top: 22px;">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日 ／ 予定営業日数 {total_biz_days_c if curr_data_exists else 0} 日</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-title" style="margin-top: 14px;">2. 当月（会議当月）の営業経過・着地予想 &nbsp;&nbsp;&nbsp; 経過日数 {total_days_c} 日 ／ 予定営業日数 {total_biz_days_c if curr_data_exists else 0} 日</div>', unsafe_allow_html=True)
     st.markdown(f"""<div style="margin-left:10px; line-height: 1.6; font-size: 1.5rem;">
 <div>現在までののべ利用者数 &nbsp;&nbsp; <span class="kpi-main">{total_users_c:,.0f}</span> 人 &nbsp;&nbsp; / &nbsp;&nbsp; 1日平均利用 &nbsp;&nbsp; <span class="kpi-main">{avg_total_c:.2f}</span> 人 <span style="font-size:1.35rem;">(平日 {avg_week_c:.2f} 人 &nbsp; 土曜 {avg_sat_c:.2f} 人)</span></div>
 <div style="margin-top: 6px;">累積稼働率 &nbsp;&nbsp; <span class="kpi-main">{occ_c_total:.2f} %</span> &nbsp;&nbsp; <span style="font-size:1.35rem;">(平日 <span style="text-decoration:underline; font-weight:bold;">{occ_week_c:.2f} %</span> &nbsp; 土曜 <span style="text-decoration:underline; font-weight:bold;">{occ_sat_c:.2f} %</span>)</span></div>
@@ -498,15 +498,15 @@ if curr_data_exists:
 <div style="font-size: 0.95rem; color:#64748B; margin-bottom:3px; margin-left: 15px;">※前月の確定客単価 (¥{unit_price:,.0f}) × 当月の着地予想人数 ({projected_users_c:,.0f}人)</div>
 </div></div>""", unsafe_allow_html=True)
     
-st.markdown('<div style="font-weight:bold; font-size:1.15rem; color:#0F172A; border-bottom:2px solid #CBD5E1; margin-top:15px; margin-bottom:5px;">前月・今月の営業状況コメント</div>', unsafe_allow_html=True)
+st.markdown('<div style="font-weight:bold; font-size:1.15rem; color:#0F172A; border-bottom:2px solid #CBD5E1; margin-top:10px; margin-bottom:4px;">前月・今月の営業状況コメント</div>', unsafe_allow_html=True)
 # Reduced height to prevent Page 1 overflow
-comment_text = st.text_area("", placeholder="前月の総括や、今月の見込み・共有事項を入力してください...", height=170, label_visibility="collapsed", key="report_comment")
+comment_text = st.text_area("", placeholder="前月の総括や、今月の見込み・共有事項を入力してください...", height=135, label_visibility="collapsed", key="report_comment")
 
-st.markdown('<div class="section-title" style="margin-top: 22px;">3. 人事・車両・インシデントなどの報告</div>', unsafe_allow_html=True)
-incident_comment = st.text_area("", placeholder="人事異動、車両の状況、ヒヤリハット・インシデント等の共有事項を入力してください...", height=170, label_visibility="collapsed", key="incident_comment")
+st.markdown('<div class="section-title" style="margin-top: 14px;">3. 人事・車両・インシデントなどの報告</div>', unsafe_allow_html=True)
+incident_comment = st.text_area("", placeholder="人事異動、車両の状況、ヒヤリハット・インシデント等の共有事項を入力してください...", height=135, label_visibility="collapsed", key="incident_comment")
 
 # Move "次回会議日程" to the bottom right of Page 1
-st.markdown('<div style="text-align: right; font-weight:bold; font-size:1.3rem; margin-top:28px; margin-bottom:15px;">次回会議日程　　　　月　　　日　（　　　）　　～　</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: right; font-weight:bold; font-size:1.25rem; margin-top:16px; margin-bottom:6px;">次回会議日程　　　　月　　　日　（　　　）　　～　</div>', unsafe_allow_html=True)
 
 # --- UI 2ページ目 ---
 st.markdown('<div style="page-break-before: always; height:0;"></div>', unsafe_allow_html=True)
