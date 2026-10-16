@@ -7,131 +7,309 @@ from google.oauth2.service_account import Credentials
 
 st.set_page_config(page_title="全社・経営ダッシュボード", layout="wide")
 
+FACILITY_CONFIG = {
+    "リハビリ教室新松戸": {"week": 84, "sat": 40},
+    "リハビリ教室馬橋2号館": {"week": 50, "sat": 40},
+    "ことばとからだのリハビリ教室": {"week": 27, "sat": 27},
+    "リハビリ教室サテライトクラス": {"week": 24, "sat": 24}
+}
+
+# --- スタイル定義 (画面およびPDF印刷用) ---
 st.markdown("""
 <style>
-    .report-title { font-size: 1.6rem; font-weight: bold; border-bottom: 2px solid #3b82f6; padding-bottom: 3px; margin-bottom: 15px; color: #1f2937; }
-    .kpi-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .kpi-title { font-size: 0.9rem; color: #64748b; font-weight: bold; margin-bottom: 5px; }
-    .kpi-value { font-size: 1.8rem; font-weight: bold; color: #0f172a; }
-    .kpi-sub { font-size: 0.85rem; color: #ef4444; font-weight: bold; }
+    /* 画面表示用スタイル */
+    .report-title { 
+        font-size: 1.85rem; 
+        font-weight: bold; 
+        border-bottom: 3px solid #3B82F6; 
+        padding-bottom: 6px; 
+        margin-bottom: 15px; 
+        color: #0F172A; 
+    }
+    .kpi-container {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .kpi-card { 
+        flex: 1;
+        background-color: #F8FAFC; 
+        border: 1px solid #E2E8F0; 
+        border-radius: 10px; 
+        padding: 16px; 
+        text-align: center; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06); 
+    }
+    .kpi-title { 
+        font-size: 0.95rem; 
+        color: #64748B; 
+        font-weight: bold; 
+        margin-bottom: 6px; 
+    }
+    .kpi-value { 
+        font-size: 2.2rem; 
+        font-weight: 900; 
+        color: #1E293B; 
+    }
+    .kpi-sales {
+        color: #EF4444 !important;
+    }
+    
+    /* PDF印刷用スタイル (A4横で綺麗に1枚に収める) */
     @media print {
-        .no-print { display: none !important; }
-        @page { size: A4 landscape; margin: 10mm; }
-        body { zoom: 0.85 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        header, .stSidebar, .stToolbar, footer { display: none !important; }
-        .element-container:has(iframe) { display: none !important; height: 0 !important; margin: 0 !important; padding: 0 !important; }
-        iframe { display: none !important; }
-        .block-container { padding: 5mm !important; margin: 0 !important; max-width: 100% !important; width: 100% !important; }
+        @page { 
+            size: A4 landscape; 
+            margin: 8mm; 
+        }
+        body { 
+            zoom: 0.72 !important; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+        }
+        [data-testid="stSidebar"], .stButton, .no-print, header, footer { 
+            display: none !important; 
+        }
+        .block-container, [data-testid="stAppViewBlockContainer"] { 
+            padding: 0 !important; 
+            margin: 0 !important; 
+            max-width: 100% !important; 
+            width: 100% !important; 
+        }
+        [data-testid="stPlotlyChart"] {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🏢 法人全体・経営会議用 ダッシュボード")
-
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=30)
 def get_corporate_data():
     try:
-        scopes = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-        if os.path.exists('credentials.json'):
-            creds = Credentials.from_service_account_file('credentials.json', scopes=scopes)
-        else:
-            creds = Credentials.from_service_account_info(dict(st.secrets["gcp_service_account"]), scopes=scopes)
+        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+        creds = None
+        if os.path.exists("credentials.json"):
+            creds = Credentials.from_service_account_file("credentials.json", scopes=scopes)
+        elif "gcp_service_account" in st.secrets:
+            creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+            
+        if not creds:
+            return pd.DataFrame()
+            
         client = gspread.authorize(creds)
-        sheet = client.open_by_key('1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4')
-        worksheet = sheet.worksheet("月次データ")
-        records = worksheet.get_all_records()
-        return pd.DataFrame(records)
+        sheet_id = '1evcMFBhUGApDjrPgiSSjkah_W0KHnb-XK9gW4v9NYx4'
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # 月次実績データ（優先）または月次データを取得
+        try:
+            ws = spreadsheet.worksheet("月次実績データ")
+        except gspread.exceptions.WorksheetNotFound:
+            try:
+                ws = spreadsheet.worksheet("月次データ")
+            except:
+                return pd.DataFrame()
+                
+        records = ws.get_all_records()
+        if not records:
+            return pd.DataFrame()
+            
+        df = pd.DataFrame(records)
+        # 列名ゆれの吸収
+        col_rename = {
+            '対象年月': '対象月',
+            '事業所名': '事業所',
+            'のべ利用者数': '延べ利用者数',
+            '確定客単価': '利用者単価'
+        }
+        df.rename(columns=col_rename, inplace=True)
+        return df
     except Exception as e:
+        st.error(f"スプレッドシート読込エラー: {e}")
         return pd.DataFrame()
 
-df = get_corporate_data()
+df_raw = get_corporate_data()
 
-if df.empty or '対象年月' not in df.columns:
-    st.info("まだデータベースにデータがありません。「月次確定 分析ツール」から各事業所のデータを保存してください。")
+if df_raw.empty or '対象月' not in df_raw.columns:
+    st.info("💡 スプレッドシートにデータがまだありません。「月次確定 分析ツール」で各事業所の実績を保存してください。")
     st.stop()
 
-# 重複排除（同じ月に同じ事業所を何度も保存した場合、一番新しい行を採用する）
-df = df.sort_values('登録日時').drop_duplicates(subset=['対象年月', '事業所名'], keep='last')
+# 重複排除（同じ対象月に同じ事業所のデータがある場合は最新の行を採用）
+sort_col = '報告日時' if '報告日時' in df_raw.columns else df_raw.columns[0]
+df = df_raw.sort_values(sort_col).drop_duplicates(subset=['対象月', '事業所'], keep='last').copy()
 
-# サイドバーで月を選択
-months = sorted(df['対象年月'].unique(), reverse=True)
-st.sidebar.header("🗓️ 抽出条件")
-selected_month = st.sidebar.selectbox("表示する月を選択", months)
+# 型変換
+for col in ['確定総売上', '延べ利用者数', '営業日数', '利用者単価', '総合稼働率', '1日平均利用_平日', '1日平均利用_土曜']:
+    if col in df.columns:
+        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '').str.replace('%', ''), errors='coerce').fillna(0)
 
-df_month = df[df['対象年月'] == selected_month].copy()
+months = sorted(df['対象月'].astype(str).unique(), reverse=True)
 
-# データクレンジング（文字列表記対策）
-for col in ['確定総売上', 'のべ利用者数', '機会損失額', '平日稼働率', '土曜稼働率']:
-    df_month[col] = pd.to_numeric(df_month[col].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+with st.sidebar:
+    st.header("🗓️ 抽出条件")
+    selected_month = st.selectbox("確認する対象月を選択", months, index=0)
+    
+    st.markdown("---")
+    st.markdown("### 🖨️ レポート出力")
+    st.caption("A4横サイズで全社会議用レポートをPDF保存できます。")
+    import streamlit.components.v1 as components
+    components.html("""
+        <style>
+            @media print { body { display: none !important; } }
+        </style>
+        <div class="no-print" style="text-align: center;">
+            <button style="width: 100%; height: 50px; background-color: #3B82F6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.05rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
+            onclick="window.parent.print();">
+                🖨️ 全社レポートをPDF出力（印刷）
+            </button>
+        </div>
+    """, height=60)
 
-# --- KPI計算 ---
+df_month = df[df['対象月'].astype(str) == selected_month].copy()
+
+# --- 全社集計値の計算 ---
 total_sales = df_month['確定総売上'].sum()
-total_users = df_month['のべ利用者数'].sum()
-total_loss = df_month['機会損失額'].sum()
+total_users = df_month['延べ利用者数'].sum()
 avg_unit_price = total_sales / total_users if total_users > 0 else 0
 
-st.markdown(f'<div class="report-title">{selected_month} 法人全体 業績サマリー</div>', unsafe_allow_html=True)
+# 全社総合稼働率の計算（各事業所の定員合計に基づく加重集計）
+tot_cap = 0
+for _, row in df_month.iterrows():
+    fac_name = row.get('事業所', '')
+    users = row.get('延べ利用者数', 0)
+    occ = row.get('総合稼働率', 0)
+    if occ > 0:
+        tot_cap += (users / (occ / 100))
+    else:
+        days = row.get('営業日数', 26)
+        c_week = FACILITY_CONFIG.get(fac_name, {}).get('week', 30)
+        tot_cap += c_week * days
 
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.markdown(f'<div class="kpi-box"><div class="kpi-title">全社 確定総売上</div><div class="kpi-value">¥{total_sales:,.0f}</div></div>', unsafe_allow_html=True)
-with col2:
-    st.markdown(f'<div class="kpi-box"><div class="kpi-title">全社 のべ利用者数</div><div class="kpi-value">{total_users:,.0f} 人</div></div>', unsafe_allow_html=True)
-with col3:
-    st.markdown(f'<div class="kpi-box"><div class="kpi-title">全社 平均客単価</div><div class="kpi-value">¥{avg_unit_price:,.0f}</div></div>', unsafe_allow_html=True)
-with col4:
-    sign = "+" if total_loss >= 0 else ""
-    color = "#16a34a" if total_loss >= 0 else "#ef4444"
-    st.markdown(f'<div class="kpi-box"><div class="kpi-title">全社 機会損失額 (80%基準)</div><div class="kpi-value" style="color:{color};">{sign}{total_loss:,.0f} 円</div></div>', unsafe_allow_html=True)
+overall_occ = (total_users / tot_cap * 100) if tot_cap > 0 else 0
 
-st.markdown("<br>", unsafe_allow_html=True)
+# --- タイトルヘッダー ---
+st.markdown(f'<div class="report-title">🏢 {selected_month} 法人全体 経営会議ダッシュボード</div>', unsafe_allow_html=True)
 
-# --- グラフ表示 ---
-colA, colB = st.columns(2)
-with colA:
-    fig_sales = go.Figure(go.Bar(
-        x=df_month['事業所名'], 
-        y=df_month['確定総売上'], 
-        text=[f"¥{v:,.0f}" for v in df_month['確定総売上']], 
-        textposition='auto', 
-        marker_color='#3b82f6'
-    ))
-    fig_sales.update_layout(title='事業所別 確定売上', height=300, margin=dict(l=20,r=20,t=40,b=20))
-    st.plotly_chart(fig_sales, use_container_width=True, config={'staticPlot': True})
-
-with colB:
-    fig_occ = go.Figure()
-    fig_occ.add_trace(go.Bar(
-        x=df_month['事業所名'], y=df_month['平日稼働率'], name='平日稼働率', 
-        text=[f"{v:.1f}%" for v in df_month['平日稼働率']], textposition='auto', marker_color='#22c55e'
-    ))
-    fig_occ.add_trace(go.Bar(
-        x=df_month['事業所名'], y=df_month['土曜稼働率'], name='土曜稼働率', 
-        text=[f"{v:.1f}%" for v in df_month['土曜稼働率']], textposition='auto', marker_color='#f97316'
-    ))
-    fig_occ.update_layout(title='事業所別 稼働率比較', barmode='group', height=300, margin=dict(l=20,r=20,t=40,b=20), yaxis=dict(range=[0, 110]))
-    st.plotly_chart(fig_occ, use_container_width=True, config={'staticPlot': True})
-
-# --- 詳細データテーブル ---
-st.markdown("### 📄 事業所別 詳細データ")
-
-# 表示用の整形
-df_display = df_month[['事業所名', '営業日数', 'のべ利用者数', '平日稼働率', '土曜稼働率', '確定総売上', '確定客単価', '機会損失額']].copy()
-df_display['平日稼働率'] = df_display['平日稼働率'].apply(lambda x: f"{x:.1f}%")
-df_display['土曜稼働率'] = df_display['土曜稼働率'].apply(lambda x: f"{x:.1f}%")
-df_display['確定総売上'] = df_display['確定総売上'].apply(lambda x: f"¥{x:,.0f}")
-df_display['確定客単価'] = df_display['確定客単価'].apply(lambda x: f"¥{x:,.0f}")
-df_display['機会損失額'] = df_display['機会損失額'].apply(lambda x: f"¥{x:,.0f}")
-
-st.dataframe(df_display, use_container_width=True, hide_index=True)
-
-# --- 印刷機能 ---
-import streamlit.components.v1 as components
-components.html("""
-    <div class="no-print" style="text-align: center; margin-top: 30px;">
-        <button style="padding: 14px 28px; background-color: #ef4444; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" 
-        onclick="window.parent.print();">
-        🖨️ 全社会議用レポートをPDFに出力する
-        </button>
+# --- 4大KPIカード ---
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">全社 確定総売上</div>
+        <div class="kpi-value kpi-sales">¥{int(total_sales):,}</div>
     </div>
-""", height=100)
+    """, unsafe_allow_html=True)
+with c2:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">全社 延べ利用者数</div>
+        <div class="kpi-value">{int(total_users):,} <span style="font-size:1.2rem;">人</span></div>
+    </div>
+    """, unsafe_allow_html=True)
+with c3:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">全社 総合稼働率</div>
+        <div class="kpi-value" style="color: {'#16A34A' if overall_occ >= 80 else '#EF4444'};">{overall_occ:.1f} <span style="font-size:1.2rem;">%</span></div>
+    </div>
+    """, unsafe_allow_html=True)
+with c4:
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-title">全社 平均客単価</div>
+        <div class="kpi-value">¥{int(avg_unit_price):,}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+
+# --- グラフ表示（横並び2列） ---
+g_col1, g_col2 = st.columns(2)
+
+with g_col1:
+    fig_sales = go.Figure(go.Bar(
+        x=df_month['事業所'], 
+        y=df_month['確定総売上'], 
+        text=[f"¥{int(v):,}" for v in df_month['確定総売上']], 
+        textposition='auto', 
+        textfont=dict(size=14, color='white', weight='bold'),
+        marker_color='#3B82F6'
+    ))
+    fig_sales.update_layout(
+        title=dict(text='事業所別 確定売上（円）', font=dict(size=16)), 
+        height=320, 
+        margin=dict(l=10, r=10, t=35, b=10),
+        yaxis=dict(title='売上（円）')
+    )
+    st.plotly_chart(fig_sales, use_container_width=True, config={'displayModeBar': False, 'staticPlot': True})
+
+with g_col2:
+    fig_occ = go.Figure(go.Bar(
+        x=df_month['事業所'], 
+        y=df_month['総合稼働率'], 
+        text=[f"{v:.1f}%" for v in df_month['総合稼働率']], 
+        textposition='auto', 
+        textfont=dict(size=14, color='white', weight='bold'),
+        marker_color='#10B981'
+    ))
+    fig_occ.add_hline(y=80, line_dash="dash", line_color="red", annotation_text="8割ライン", annotation_position="top right")
+    fig_occ.update_layout(
+        title=dict(text='事業所別 総合稼働率（%）', font=dict(size=16)), 
+        height=320, 
+        margin=dict(l=10, r=10, t=35, b=10), 
+        yaxis=dict(range=[0, 110], ticksuffix='%')
+    )
+    st.plotly_chart(fig_occ, use_container_width=True, config={'displayModeBar': False, 'staticPlot': True})
+
+# --- 事業所別 内訳比較表 ---
+st.markdown("### 🏢 事業所別 実績内訳一覧")
+
+rows = []
+for _, r in df_month.iterrows():
+    s = r.get('確定総売上', 0)
+    u = r.get('延べ利用者数', 0)
+    o = r.get('総合稼働率', 0)
+    up = r.get('利用者単価', 0) or (s / u if u > 0 else 0)
+    sh = (s / total_sales * 100) if total_sales > 0 else 0
+    
+    rows.append({
+        '事業所名': r.get('事業所', ''),
+        '確定総売上': f"¥{int(s):,}",
+        '売上シェア': f"{sh:.1f}%",
+        '延べ利用人数': f"{int(u):,}人",
+        '総合稼働率': f"{o:.1f}%",
+        '客単価': f"¥{int(up):,}",
+        '平日平均利用': f"{float(r.get('1日平均利用_平日', 0)):.1f}人",
+        '土曜平均利用': f"{float(r.get('1日平均利用_土曜', 0)):.1f}人",
+        '営業日数': f"{int(r.get('営業日数', 0))}日"
+    })
+
+# 全社合計行
+rows.append({
+    '事業所名': '【法人全体 合計/平均】',
+    '確定総売上': f"¥{int(total_sales):,}",
+    '売上シェア': "100.0%",
+    '延べ利用人数': f"{int(total_users):,}人",
+    '総合稼働率': f"{overall_occ:.1f}%",
+    '客単価': f"¥{int(avg_unit_price):,}",
+    '平日平均利用': f"{df_month['1日平均利用_平日'].sum():.1f}人",
+    '土曜平均利用': f"{df_month['1日平均利用_土曜'].sum():.1f}人",
+    '営業日数': f"{int(df_month['営業日数'].max())}日"
+})
+
+df_table = pd.DataFrame(rows)
+st.dataframe(df_table, use_container_width=True, hide_index=True)
+
+# --- 各事業所の報告コメント一覧 ---
+st.markdown("---")
+st.markdown(f"### 📝 {selected_month} 各事業所の報告コメント")
+cols_comment = st.columns(len(df_month) if len(df_month) > 0 else 1)
+
+for idx, (_, r) in enumerate(df_month.iterrows()):
+    with st.expander(f"📌 {r.get('事業所')} の報告事項", expanded=True):
+        comm_c1, comm_c2 = st.columns(2)
+        with comm_c1:
+            st.markdown("<div style='font-weight:bold; color:#1E293B; margin-bottom:4px;'>【営業状況コメント】</div>", unsafe_allow_html=True)
+            st.info(r.get('営業状況コメント') or '（記載なし）')
+        with comm_c2:
+            st.markdown("<div style='font-weight:bold; color:#1E293B; margin-bottom:4px;'>【人事・車両・インシデント等】</div>", unsafe_allow_html=True)
+            st.warning(r.get('人事等コメント') or '（記載なし）')
