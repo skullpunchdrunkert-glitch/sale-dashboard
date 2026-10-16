@@ -163,10 +163,12 @@ else:
                 break
         df_prev = pd.read_csv(io.StringIO('\n'.join(sched_p_lines[header_idx_p:])))
 
-        col_prev = 'サービス実績' if 'サービス実績' in df_prev.columns else (df_prev.columns[258] if len(df_prev.columns) > 258 else None)
+        col_prev = next((c for c in df_prev.columns if 'サービス実績' in c or '実績' in c), None)
+        if not col_prev and len(df_prev.columns) > 258:
+            col_prev = df_prev.columns[258]
         if col_prev:
             actual_vals_p = pd.to_numeric(df_prev[col_prev], errors='coerce').fillna(0)
-            df_prev = df_prev[actual_vals_p != 0]
+            df_prev = df_prev[actual_vals_p > 0]
 
         df_prev['サービス日付'] = pd.to_datetime(df_prev['サービス日付'], errors='coerce')
         df_prev = df_prev.dropna(subset=['サービス日付'])
@@ -458,22 +460,29 @@ with col1:
 with col2:
     import plotly.graph_objects as go
     if not daily_prev.empty:
+        # 実績0人および日曜日（定休日）を徹底除外
+        daily_prev = daily_prev[(daily_prev['利用者数'] > 0) & (daily_prev['曜日'] <= 5)].copy()
         daily_prev['定員'] = daily_prev['曜日'].apply(lambda w: cap_sat if w == 5 else cap_week)
         daily_prev['稼働率'] = daily_prev.apply(lambda r: (r['利用者数'] / r['定員'] * 100) if r['定員'] > 0 else 0, axis=1)
+        # 稼働率0%の非営業日を除外
+        daily_prev = daily_prev[daily_prev['稼働率'] > 0].copy()
+        
+        # 営業日のみを等間隔で綺麗に並べるため、文字列ラベル（例: 09/01）を使用
+        daily_prev['日付_label'] = daily_prev['サービス日付'].dt.strftime('%m/%d')
         
         fig1 = go.Figure()
         fig1.add_trace(go.Scatter(
-            x=daily_prev['サービス日付'], 
+            x=daily_prev['日付_label'], 
             y=daily_prev['稼働率'], 
             mode='lines+markers', 
             line=dict(color='#2563EB', width=3), 
             name='稼働率',
-            hovertemplate='%{x|%m/%d}: %{y:.1f}%<extra></extra>'
+            hovertemplate='%{x}: %{y:.1f}%<extra></extra>'
         ))
         
         target_80_y = [80] * len(daily_prev)
         fig1.add_trace(go.Scatter(
-            x=daily_prev['サービス日付'], 
+            x=daily_prev['日付_label'], 
             y=target_80_y, 
             mode='lines', 
             line=dict(color='red', dash='dash', width=2), 
@@ -486,6 +495,7 @@ with col2:
             title=dict(text='日別稼働率推移（確定月）', font=dict(size=16)), 
             height=350, 
             margin=dict(l=5, r=5, t=25, b=10), 
+            xaxis=dict(type='category'),
             yaxis=dict(range=[0, y_max], ticksuffix='%'), 
             legend=dict(orientation="h", y=-0.2, yanchor="bottom", xanchor="right", x=1)
         )
