@@ -16,15 +16,19 @@ FACILITY_CONFIG = {
     "ことばとからだのリハビリ教室": {"week": 27, "sat": 27},
     "リハビリ教室サテライトクラス": {"week": 24, "sat": 24}
 }
-selected_facility = st.sidebar.selectbox("対象事業所選択", list(FACILITY_CONFIG.keys()), index=2)
+if mode == "📊 過去データ閲覧":
+    view_options = ["🏢 法人全体（全事業所合計）"] + list(FACILITY_CONFIG.keys())
+    selected_view = st.sidebar.selectbox("表示対象", view_options, index=0)
+    selected_facility = selected_view if selected_view != "🏢 法人全体（全事業所合計）" else list(FACILITY_CONFIG.keys())[0]
+else:
+    selected_facility = st.sidebar.selectbox("対象事業所選択", list(FACILITY_CONFIG.keys()), index=2)
+    selected_view = selected_facility
+
 cap_week = FACILITY_CONFIG[selected_facility]["week"]
 cap_sat = FACILITY_CONFIG[selected_facility]["sat"]
 facility = selected_facility
 
 if mode == "📊 過去データ閲覧":
-    st.markdown('<div class="report-title">📊 過去データ（実績表）</div>', unsafe_allow_html=True)
-    st.markdown("Googleスプレッドシート（月次実績データ）に保存された過去の確定実績を一覧表で振り返ります。")
-    
     try:
         import gspread
         from google.oauth2.service_account import Credentials
@@ -46,21 +50,12 @@ if mode == "📊 過去データ閲覧":
                 ws = spreadsheet.worksheet("月次実績データ")
                 records = ws.get_all_records()
                 if not records:
-                    st.info("データがまだありません。各月の実績を保存してください。")
+                    st.info("データがまだありません。新規データ分析モードから各月の実績を保存してください。")
                     st.stop()
                     
                 df_history = pd.DataFrame(records)
-                df_fac = df_history[df_history['事業所'] == facility].copy()
                 
-                if df_fac.empty:
-                    st.info(f"{facility} の過去データはまだ保存されていません。")
-                    st.stop()
-                
-                df_fac['対象月str'] = df_fac['対象月'].astype(str)
-                df_fac = df_fac.sort_values('対象月str', ascending=False)
-                
-                df_display = df_fac[['対象月str', '営業日数', '延べ利用者数', '1日平均利用_平日', '1日平均利用_土曜', '総合稼働率', '要介護・支援割合', '確定総売上', '利用者単価']].copy()
-                
+                # Format helper functions
                 def format_yen(x):
                     try: return f"¥{int(x):,}"
                     except: return x
@@ -68,36 +63,174 @@ if mode == "📊 過去データ閲覧":
                 def format_pct(x):
                     try: return f"{float(x):.1f}%"
                     except: return x
+
+                # --- 1. 法人全体表示モード ---
+                if selected_view == "🏢 法人全体（全事業所合計）":
+                    st.markdown('<div class="report-title">🏢 法人全体 実績サマリー（全事業所集計）</div>', unsafe_allow_html=True)
+                    st.markdown("全事業所（新松戸・馬橋2号館・サテライト・ことばとからだ）の月次実績を集計した全社データです。")
                     
-                df_display['確定総売上'] = df_display['確定総売上'].apply(format_yen)
-                df_display['利用者単価'] = df_display['利用者単価'].apply(format_yen)
-                df_display['総合稼働率'] = df_display['総合稼働率'].apply(format_pct)
-                df_display.rename(columns={'対象月str': '対象月'}, inplace=True)
-                
-                st.markdown("### 📈 実績一覧表")
-                st.dataframe(df_display, use_container_width=True, hide_index=True)
-                
-                st.markdown("---")
-                st.markdown("### 📝 過去の営業状況コメント履歴")
-                
-                for _, r in df_fac.iterrows(): 
-                    with st.expander(f"{r['対象月str']} のレポート (報告日: {str(r.get('報告日時',''))[:10]})"):
-                        cc1, cc2 = st.columns(2)
-                        with cc1:
-                            st.markdown("**【営業状況コメント】**")
-                            st.info(r.get('営業状況コメント', '記載なし'))
-                        with cc2:
-                            st.markdown("**【人事・車両・インシデント等】**")
-                            st.warning(r.get('人事等コメント', '記載なし'))
+                    # Group by 対象月
+                    unique_months = sorted(df_history['対象月'].astype(str).unique(), reverse=True)
+                    
+                    corp_summary = []
+                    for m in unique_months:
+                        df_m = df_history[df_history['対象月'].astype(str) == m].copy()
+                        fac_count = df_m['事業所'].nunique()
+                        
+                        tot_sales = pd.to_numeric(df_m['確定総売上'].astype(str).str.replace(',', ''), errors='coerce').sum()
+                        tot_users = pd.to_numeric(df_m['延べ利用者数'].astype(str).str.replace(',', ''), errors='coerce').sum()
+                        u_price = tot_sales / tot_users if tot_users > 0 else 0
+                        
+                        # 法人全体稼働率の計算（各事業所の定員合計に基づく加重集計）
+                        tot_cap = 0
+                        for _, row in df_m.iterrows():
+                            f_name = row.get('事業所', '')
+                            u = pd.to_numeric(str(row.get('延べ利用者数', 0)).replace(',', ''), errors='coerce') or 0
+                            o = pd.to_numeric(str(row.get('総合稼働率', 0)).replace('%', ''), errors='coerce') or 0
+                            if o > 0:
+                                tot_cap += (u / (o / 100))
+                            else:
+                                d = pd.to_numeric(str(row.get('営業日数', 26)), errors='coerce') or 26
+                                cw = FACILITY_CONFIG.get(f_name, {}).get('week', 30)
+                                tot_cap += cw * d
+                        corp_occ = (tot_users / tot_cap * 100) if tot_cap > 0 else 0
+                        
+                        avg_week_sum = pd.to_numeric(df_m.get('1日平均利用_平日', 0), errors='coerce').sum()
+                        avg_sat_sum = pd.to_numeric(df_m.get('1日平均利用_土曜', 0), errors='coerce').sum()
+                        
+                        care_r = pd.to_numeric(df_m.get('要介護・支援割合', 0), errors='coerce').fillna(0)
+                        u_arr = pd.to_numeric(df_m['延べ利用者数'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+                        care_w = (care_r * u_arr).sum() / tot_users if tot_users > 0 else 0
+                        
+                        max_days = int(pd.to_numeric(df_m['営業日数'], errors='coerce').max()) if '営業日数' in df_m.columns else 26
+                        
+                        corp_summary.append({
+                            '対象月': m,
+                            '登録施設': f"{fac_count} / {len(FACILITY_CONFIG)} 事業所",
+                            '営業日数': max_days,
+                            '全社総売上': int(tot_sales),
+                            '全社延べ利用数': int(tot_users),
+                            '全社客単価': int(u_price),
+                            '全社総合稼働率': round(corp_occ, 2),
+                            '1日平均利用_平日': round(avg_week_sum, 1),
+                            '1日平均利用_土曜': round(avg_sat_sum, 1),
+                            '要介護・支援割合': round(care_w, 1)
+                        })
+                        
+                    df_corp = pd.DataFrame(corp_summary)
+                    
+                    if not df_corp.empty:
+                        # KPIカード（最新月）
+                        latest = df_corp.iloc[0]
+                        st.markdown(f"#### 🏆 直近実績ハイライト（{latest['対象月']}）")
+                        kpi_c1, kpi_c2, kpi_c3, kpi_c4 = st.columns(4)
+                        kpi_c1.metric("確定総売上（全社合計）", f"¥{latest['全社総売上']:,}")
+                        kpi_c2.metric("延べ利用者数（全社合計）", f"{latest['全社延べ利用数']:,} 人")
+                        kpi_c3.metric("法人総合稼働率", f"{latest['全社総合稼働率']:.1f} %")
+                        kpi_c4.metric("全社平均客単価", f"¥{latest['全社客単価']:,}")
+                        
+                        st.markdown("---")
+                        st.markdown("### 📈 月次実績推移（法人全体）")
+                        
+                        df_corp_disp = df_corp.copy()
+                        df_corp_disp['全社総売上'] = df_corp_disp['全社総売上'].apply(format_yen)
+                        df_corp_disp['全社客単価'] = df_corp_disp['全社客単価'].apply(format_yen)
+                        df_corp_disp['全社延べ利用数'] = df_corp_disp['全社延べ利用数'].apply(lambda x: f"{x:,}人")
+                        df_corp_disp['全社総合稼働率'] = df_corp_disp['全社総合稼働率'].apply(format_pct)
+                        df_corp_disp['要介護・支援割合'] = df_corp_disp['要介護・支援割合'].apply(format_pct)
+                        st.dataframe(df_corp_disp, use_container_width=True, hide_index=True)
+                        
+                        st.markdown("---")
+                        # 事業所別内訳テーブル
+                        st.markdown("### 🏢 事業所別 内訳比較")
+                        sel_m = st.selectbox("確認する対象月を選択", unique_months, index=0)
+                        
+                        df_sub = df_history[df_history['対象月'].astype(str) == sel_m].copy()
+                        tot_sub_sales = pd.to_numeric(df_sub['確定総売上'].astype(str).str.replace(',', ''), errors='coerce').sum()
+                        
+                        breakdown_list = []
+                        for _, r in df_sub.iterrows():
+                            s = pd.to_numeric(str(r.get('確定総売上', 0)).replace(',', ''), errors='coerce') or 0
+                            u = pd.to_numeric(str(r.get('延べ利用者数', 0)).replace(',', ''), errors='coerce') or 0
+                            o = pd.to_numeric(str(r.get('総合稼働率', 0)).replace('%', ''), errors='coerce') or 0
+                            up = pd.to_numeric(str(r.get('利用者単価', 0)).replace(',', ''), errors='coerce') or (s / u if u > 0 else 0)
+                            sh = (s / tot_sub_sales * 100) if tot_sub_sales > 0 else 0
+                            
+                            breakdown_list.append({
+                                '事業所名': r.get('事業所', ''),
+                                '確定総売上': int(s),
+                                '売上シェア': f"{sh:.1f}%",
+                                '延べ利用者数': f"{int(u):,}人",
+                                '総合稼働率': f"{o:.1f}%",
+                                '客単価': f"¥{int(up):,}",
+                                '平日平均': f"{float(r.get('1日平均利用_平日', 0)):.1f}人",
+                                '土曜平均': f"{float(r.get('1日平均利用_土曜', 0)):.1f}人",
+                                '要介護割合': f"{float(r.get('要介護・支援割合', 0)):.1f}%"
+                            })
+                            
+                        df_breakdown = pd.DataFrame(breakdown_list)
+                        df_breakdown['確定総売上'] = df_breakdown['確定総売上'].apply(format_yen)
+                        st.dataframe(df_breakdown, use_container_width=True, hide_index=True)
+                        
+                        st.markdown("---")
+                        st.markdown(f"### 📝 {sel_m} 各事業所の報告コメント一覧")
+                        for _, r in df_sub.iterrows():
+                            with st.expander(f"📌 {r.get('事業所')} の報告 (報告日: {str(r.get('報告日時',''))[:10]})"):
+                                c1, c2 = st.columns(2)
+                                with c1:
+                                    st.markdown("【営業状況コメント】")
+                                    st.info(r.get('営業状況コメント') or '記載なし')
+                                with c2:
+                                    st.markdown("【人事・車両・インシデント等】")
+                                    st.warning(r.get('人事等コメント') or '記載なし')
+
+                # --- 2. 単一事業所表示モード ---
+                else:
+                    st.markdown(f'<div class="report-title">📊 過去データ実績表（{selected_view}）</div>', unsafe_allow_html=True)
+                    st.markdown("選択された事業所の保存済み確定実績およびコメント履歴です。")
+                    
+                    df_fac = df_history[df_history['事業所'] == selected_view].copy()
+                    
+                    if df_fac.empty:
+                        st.info(f"{selected_view} の過去データはまだ保存されていません。")
+                        st.stop()
+                    
+                    df_fac['対象月str'] = df_fac['対象月'].astype(str)
+                    df_fac = df_fac.sort_values('対象月str', ascending=False)
+                    
+                    df_display = df_fac[['対象月str', '営業日数', '延べ利用者数', '1日平均利用_平日', '1日平均利用_土曜', '総合稼働率', '要介護・支援割合', '確定総売上', '利用者単価']].copy()
+                    
+                    df_display['確定総売上'] = df_display['確定総売上'].apply(format_yen)
+                    df_display['利用者単価'] = df_display['利用者単価'].apply(format_yen)
+                    df_display['総合稼働率'] = df_display['総合稼働率'].apply(format_pct)
+                    df_display.rename(columns={'対象月str': '対象月'}, inplace=True)
+                    
+                    st.markdown("### 📈 実績一覧表")
+                    st.dataframe(df_display, use_container_width=True, hide_index=True)
+                    
+                    st.markdown("---")
+                    st.markdown("### 📝 過去の営業状況コメント履歴")
+                    
+                    for _, r in df_fac.iterrows(): 
+                        with st.expander(f"{r['対象月str']} のレポート (報告日: {str(r.get('報告日時',''))[:10]})"):
+                            cc1, cc2 = st.columns(2)
+                            with cc1:
+                                st.markdown("【営業状況コメント】")
+                                st.info(r.get('営業状況コメント') or '記載なし')
+                            with cc2:
+                                st.markdown("【人事・車両・インシデント等】")
+                                st.warning(r.get('人事等コメント') or '記載なし')
             except gspread.exceptions.WorksheetNotFound:
                 st.info("過去データが存在しません。")
         else:
             st.error("認証情報が見つかりません。")
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         st.error(f"データ読み込みエラー: {e}")
         
     st.stop()
-
+                    
 else:
     with st.sidebar:
         st.header("📁 ファイル取り込み")
@@ -169,6 +302,16 @@ else:
         df_prev['サービス日付'] = pd.to_datetime(df_prev['サービス日付'], errors='coerce')
         df_prev = df_prev.dropna(subset=['サービス日付'])
 
+        # 曜日列を追加（0:月〜6:日）
+        df_prev['曜日'] = df_prev['サービス日付'].dt.dayofweek
+        # 通常デイサービスは日曜日は定休日のため除外（誤入力防止）
+        df_prev = df_prev[df_prev['曜日'] <= 5]
+
+        # 利用者氏名列がある場合、同一日同一利用者の重複（加算行など）を排除し、基本報酬回数（1人1日1回）と一致させる
+        name_col = next((c for c in df_prev.columns if '利用者氏名' in c or '氏名' in c or '利用者' in c or '名前' in c), None)
+        if name_col:
+            df_prev = df_prev.drop_duplicates(subset=['サービス日付', name_col])
+
         daily_prev = df_prev.groupby('サービス日付').size().reset_index(name='利用者数')
         daily_prev['曜日'] = daily_prev['サービス日付'].dt.dayofweek
 
@@ -209,6 +352,22 @@ else:
         occ_p_total = (total_users_p / total_cap_p_temp * 100) if total_cap_p_temp > 0 else 0
 
         unit_price = confirmed_sales / total_users_p if total_users_p > 0 else 0
+
+        # サイドバーで日数・回数の微調整（基本報酬の回数との完全整合用）
+        with st.sidebar.expander("🛠️ 営業日数・利用日数の微調整 (任意)"):
+            st.caption("自動判定された数値と基本報酬請求回数に差異がある場合、ここで直接修正できます。")
+            adj_days_p = st.number_input("前月 営業日数", min_value=1, max_value=31, value=int(total_days_p), key="adj_days_p")
+            adj_users_p = st.number_input("前月 延べ利用人数（回数）", min_value=1, max_value=5000, value=int(total_users_p), key="adj_users_p")
+            
+            if adj_days_p != total_days_p:
+                total_days_p = adj_days_p
+                avg_total_p = total_users_p / total_days_p if total_days_p > 0 else 0
+            if adj_users_p != total_users_p:
+                total_users_p = adj_users_p
+                unit_price = confirmed_sales / total_users_p if total_users_p > 0 else 0
+                avg_total_p = total_users_p / total_days_p if total_days_p > 0 else 0
+                occ_p_total = (total_users_p / total_cap_p_temp * 100) if total_cap_p_temp > 0 else 0
+
     except Exception as e:
         import traceback
         traceback.print_exc()
